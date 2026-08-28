@@ -23,7 +23,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
 
   results = results.filter((p) => {
     const fullName = `${p.firstName || ''} ${p.lastName || ''}`.trim().toLowerCase();
-    return fullName !== 'emily davis' && fullName !== 'robert johnson' && p.email !== 'emily.davis@patient.nexa.ai' && p.email !== 'robert.j@patient.nexa.ai';
+    return fullName !== 'emily davis' && fullName !== 'robert johnson' && fullName !== 'shahana k' && p.email !== 'emily.davis@patient.nexa.ai' && p.email !== 'robert.j@patient.nexa.ai';
   });
 
   // Attach latest appointment reason directly into each patient record
