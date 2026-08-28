@@ -194,7 +194,13 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
       updatedAt: new Date().toISOString(),
     } as any;
     
-    await firebaseAdminDb.collection('patients').doc(newPatient.id).set(newPatient);
+    try {
+      if (firebaseAdminDb) {
+        await firebaseAdminDb.collection('patients').doc(newPatient.id).set(newPatient);
+      }
+    } catch (e) {
+      // Offline fallback
+    }
     store.patients.unshift(newPatient);
     patientId = newPatient.id;
     patient = newPatient;
