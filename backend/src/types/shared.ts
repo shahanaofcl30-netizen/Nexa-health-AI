@@ -29,7 +29,7 @@ export type ClinicalNoteStatus = 'draft' | 'signed' | 'amended';
 
 export type LabOrderStatus = 'ordered' | 'sample_collected' | 'processing' | 'completed' | 'cancelled';
 
-export type PrescriptionStatus = 'draft' | 'signed' | 'dispensed' | 'cancelled';
+export type PrescriptionStatus = 'draft' | 'signed' | 'issued' | 'dispensed' | 'cancelled';
 
 export type InvoiceStatus = 'draft' | 'issued' | 'paid' | 'partially_paid' | 'overdue' | 'cancelled';
 
@@ -48,6 +48,12 @@ export interface UserProfile {
   phone?: string;
   avatarUrl?: string;
   verificationStatus?: 'pending' | 'approved' | 'rejected';
+  availabilitySchedule?: Array<{
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+    slotDurationMinutes: number;
+  }>;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -93,12 +99,12 @@ export interface Hospital {
   specializations: string[];
   facilities?: string[];
   availableDoctorIds?: string[];
+  consultationSlots?: string[];
   totalBeds?: number;
   emergencyAvailable?: boolean;
   rating?: number;
   isActive?: boolean;
-  distanceKm?: number;
-  createdAt: string;
+  createdAt?: string;
   updatedAt?: string;
 }
 
