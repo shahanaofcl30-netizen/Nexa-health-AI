@@ -190,6 +190,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
       emergencyContactRelation: '',
       allergies: [],
       chronicConditions: [],
+      livingSummary: reason || 'Scheduled Consultation',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     } as any;

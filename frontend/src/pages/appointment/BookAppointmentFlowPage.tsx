@@ -49,7 +49,7 @@ export const BookAppointmentFlowPage: React.FC = () => {
   );
   const [appointmentTime, setAppointmentTime] = useState<string>('10:00');
   const [appointmentType, setAppointmentType] = useState<'in_person' | 'telehealth'>('in_person');
-  const [reason, setReason] = useState<string>('Comprehensive Health Checkup & Blood Pressure Consultation');
+  const [reason, setReason] = useState<string>('');
   const [triageLevel, setTriageLevel] = useState<'routine' | 'urgent'>('routine');
 
   // Available Slots state
