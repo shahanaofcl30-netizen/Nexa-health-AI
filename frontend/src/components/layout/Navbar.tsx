@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { UserRole } from '../../types/shared';
+import { useCurrentPatient } from '../../hooks/usePatients';
 import api from '../../services/api';
 
 interface NavbarProps {
@@ -21,9 +22,30 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ onOpenMedAI, onOpenAgentTasks }) => {
   const { currentUser, activeRole, setRole } = useAuthStore();
+  const { data: currentPatient } = useCurrentPatient();
   const [alertsCount, setAlertsCount] = useState<number>(0);
   const [activeTasksCount, setActiveTasksCount] = useState<number>(0);
   const [roleDropdownOpen, setRoleDropdownOpen] = useState<boolean>(false);
+
+  // Dynamic user display name & initial resolution
+  const isPatientRole = activeRole === 'patient' || currentUser?.role === 'patient';
+
+  const rawFirstName = isPatientRole && currentPatient?.firstName
+    ? currentPatient.firstName
+    : currentUser?.firstName;
+
+  const rawLastName = isPatientRole && currentPatient?.lastName
+    ? currentPatient.lastName
+    : currentUser?.lastName;
+
+  const displayName = rawFirstName || rawLastName
+    ? `${rawFirstName || ''} ${rawLastName || ''}`.trim()
+    : currentUser?.email
+    ? currentUser.email.split('@')[0]
+    : 'User';
+
+  const avatarInitial = (displayName?.[0] || currentUser?.email?.[0] || 'U').toUpperCase();
+  const roleLabel = currentUser?.role ? currentUser.role.replace('_', ' ') : activeRole ? activeRole.replace('_', ' ') : 'USER';
 
   useEffect(() => {
     const fetchCounters = async () => {
@@ -134,18 +156,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMedAI, onOpenAgentTasks })
             className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-secondary/50 border border-secondary hover:border-primary/40 transition-all text-xs"
           >
             <div className="w-6 h-6 rounded-lg bg-white flex items-center justify-center text-primary font-bold text-xs uppercase border border-secondary">
-              {currentUser?.firstName?.[0] || currentUser?.email?.[0] || 'U'}
+              {avatarInitial}
             </div>
             <div className="text-left hidden md:block">
               <p className="text-slate-900 font-semibold leading-tight">
-                {currentUser?.firstName || currentUser?.lastName
-                  ? `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim()
-                  : currentUser?.email
-                  ? currentUser.email.split('@')[0]
-                  : 'User'}
+                {displayName}
               </p>
               <p className="text-[10px] text-slate-500 uppercase tracking-wider">
-                {currentUser?.role ? currentUser.role.replace('_', ' ') : 'USER'}
+                {roleLabel}
               </p>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-1" />
@@ -155,15 +173,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMedAI, onOpenAgentTasks })
             <div className="absolute right-0 mt-2 w-64 rounded-2xl glass-card p-2 z-50">
               <div className="px-3 py-3 border-b border-secondary mb-1 flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center text-primary font-bold text-lg uppercase">
-                  {currentUser?.firstName?.[0] || currentUser?.email?.[0] || 'U'}
+                  {avatarInitial}
                 </div>
                 <div className="overflow-hidden">
                   <p className="text-sm font-bold text-slate-900 truncate">
-                    {currentUser?.firstName || currentUser?.lastName
-                      ? `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim()
-                      : currentUser?.email
-                      ? currentUser.email.split('@')[0]
-                      : 'User'}
+                    {displayName}
                   </p>
                   <p className="text-xs text-slate-500 truncate">{currentUser?.email || 'No email available'}</p>
                 </div>
