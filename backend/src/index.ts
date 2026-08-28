@@ -43,8 +43,8 @@ app.use(authMiddleware);
 // Initialize Shared Agent Framework
 registerAllAgents();
 
-// Health Check
-app.get('/api/health', (_req, res) => {
+// Health Check Endpoints (Supports Render Health Check Path)
+app.get(['/', '/health', '/api/health'], (_req, res) => {
   res.json({
     status: 'healthy',
     platform: 'Nexa Health AI',
