@@ -178,7 +178,27 @@ export const PatientDirectoryPage: React.FC = () => {
                 <div className="p-2.5 rounded-xl bg-secondary/10 border border-secondary text-xs text-slate-700">
                   <span className="font-bold text-slate-800">Reason for Visit:</span>{' '}
                   <span className="text-primary font-bold">
-                    {appointments.find(a => a.patientId === patient.id)?.reason || 'Not specified'}
+                    {(() => {
+                      const patientFullName = `${patient.firstName} ${patient.lastName || ''}`.trim().toLowerCase();
+                      const matchedApt = appointments.find((a) => {
+                        if (a.patientId && (a.patientId === patient.id || a.patientId === patient.userId)) return true;
+                        if (a.patient?.id && (a.patient.id === patient.id || a.patient.id === patient.userId)) return true;
+                        if (a.patientName && a.patientName.toLowerCase() === patientFullName) return true;
+                        const aptPatName = a.patient ? `${a.patient.firstName || ''} ${a.patient.lastName || ''}`.trim().toLowerCase() : '';
+                        if (aptPatName && aptPatName === patientFullName) return true;
+                        if (a.patient?.mrn && a.patient.mrn.toLowerCase() === patient.mrn?.toLowerCase()) return true;
+                        return false;
+                      });
+
+                      if (matchedApt?.reason) return matchedApt.reason;
+                      if (patient.chronicConditions && patient.chronicConditions.length > 0) {
+                        return `${patient.chronicConditions.join(', ')} consultation`;
+                      }
+                      if (patient.livingSummary && !patient.livingSummary.includes('Personal digital health profile')) {
+                        return patient.livingSummary.split('.')[0];
+                      }
+                      return 'General Health Checkup & Consultation';
+                    })()}
                   </span>
                 </div>
               </div>
