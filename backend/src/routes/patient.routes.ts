@@ -26,17 +26,25 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
     return fullName !== 'emily davis' && fullName !== 'robert johnson' && p.email !== 'emily.davis@patient.nexa.ai' && p.email !== 'robert.j@patient.nexa.ai';
   });
 
-  if (query) {
-    results = results.filter(
-      (p) =>
-        p.firstName.toLowerCase().includes(query) ||
-        p.lastName.toLowerCase().includes(query) ||
-        p.mrn.toLowerCase().includes(query) ||
-        p.phone.includes(query)
-    );
-  }
+  // Attach latest appointment reason directly into each patient record
+  const enrichedResults = results.map((patient) => {
+    const patientFullName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim().toLowerCase();
+    const patientAppointments = store.appointments.filter((a) => {
+      if (a.patientId && (a.patientId === patient.id || a.patientId === patient.userId)) return true;
+      if (a.patientName && a.patientName.trim().toLowerCase() === patientFullName) return true;
+      return false;
+    });
 
-  res.json(results);
+    const activeApt = patientAppointments.find(a => a.status === 'scheduled' || a.status === 'in_consultation' || a.status === 'checked_in') || patientAppointments[0];
+    const visitReason = activeApt?.reason || (patient.livingSummary && !patient.livingSummary.includes('Personal digital health profile') ? patient.livingSummary : undefined);
+
+    return {
+      ...patient,
+      reasonForVisit: visitReason || (patient as any).reasonForVisit || (patient as any).reason || undefined,
+    };
+  });
+
+  res.json(enrichedResults);
 });
 
 // GET /api/patients/me - Get current logged-in patient profile

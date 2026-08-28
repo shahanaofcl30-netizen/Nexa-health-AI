@@ -174,6 +174,10 @@ export const PatientDirectoryPage: React.FC = () => {
                   <span className="font-bold text-slate-800">Reason for Visit:</span>{' '}
                   <span className="text-primary font-bold">
                     {(() => {
+                      if ((patient as any).reasonForVisit) {
+                        return (patient as any).reasonForVisit;
+                      }
+
                       const patientFullName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim().toLowerCase();
                       
                       // Find matching appointments for this specific patient
