@@ -557,65 +557,92 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initAuthListener: () => {
     let unsubscribe = () => {};
-    
-    import('firebase/auth').then(({ onAuthStateChanged }) => {
-      import('../lib/firebase').then(({ auth }) => {
-        unsubscribe = onAuthStateChanged(auth, async (user) => {
-          if (user) {
-            // Firebase user is signed in.
-            // If we don't have a token, we might need to exchange it again if the page refreshed.
-            // Check if we already have the Supabase custom JWT in localStorage.
-            const savedToken = localStorage.getItem('nexa_token');
-            const savedProfileStr = localStorage.getItem('nexa_user_profile');
-            
-            if (savedToken && savedProfileStr) {
-              try {
-                const savedProfile = JSON.parse(savedProfileStr);
-                set({
-                  currentUser: savedProfile,
-                  activeRole: savedProfile.role,
-                  token: savedToken,
-                  isInitialized: true,
-                });
-                return;
-              } catch {
-                // ignore
+
+    const fallbackInit = () => {
+      const savedToken = localStorage.getItem('nexa_token');
+      const savedProfileStr = localStorage.getItem('nexa_user_profile');
+      if (savedToken && savedProfileStr) {
+        try {
+          const savedProfile = JSON.parse(savedProfileStr);
+          set({
+            currentUser: savedProfile,
+            activeRole: savedProfile.role,
+            token: savedToken,
+            isInitialized: true,
+          });
+          return;
+        } catch {
+          // ignore
+        }
+      }
+      set({ isInitialized: true });
+    };
+
+    try {
+      import('firebase/auth').then(({ onAuthStateChanged }) => {
+        import('../lib/firebase').then(({ auth }) => {
+          try {
+            unsubscribe = onAuthStateChanged(auth, async (user) => {
+              if (user) {
+                const savedToken = localStorage.getItem('nexa_token');
+                const savedProfileStr = localStorage.getItem('nexa_user_profile');
+
+                if (savedToken && savedProfileStr) {
+                  try {
+                    const savedProfile = JSON.parse(savedProfileStr);
+                    set({
+                      currentUser: savedProfile,
+                      activeRole: savedProfile.role,
+                      token: savedToken,
+                      isInitialized: true,
+                    });
+                    return;
+                  } catch {
+                    // ignore
+                  }
+                }
+
+                try {
+                  const firebaseToken = await user.getIdToken();
+                  const res = await api.post('/auth/firebase-exchange', { firebaseToken });
+                  const { token, user: userProfile } = res.data;
+
+                  localStorage.setItem('nexa_token', token);
+                  localStorage.setItem('nexa_active_role', userProfile.role);
+                  localStorage.setItem('nexa_active_user_id', userProfile.id);
+                  localStorage.setItem('nexa_user_profile', JSON.stringify(userProfile));
+
+                  set({
+                    currentUser: userProfile,
+                    activeRole: userProfile.role,
+                    token,
+                    isInitialized: true,
+                  });
+                } catch (error) {
+                  fallbackInit();
+                }
+              } else {
+                set({ currentUser: null, token: null, activeRole: 'patient', isInitialized: true });
+                queryClient.clear();
+                localStorage.removeItem('nexa_token');
+                localStorage.removeItem('nexa_active_role');
+                localStorage.removeItem('nexa_active_user_id');
+                localStorage.removeItem('nexa_user_profile');
+                sessionStorage.clear();
               }
-            }
-            
-            // If we don't have the profile, exchange token again
-            try {
-              const firebaseToken = await user.getIdToken();
-              const res = await api.post('/auth/firebase-exchange', { firebaseToken });
-              const { token, user: userProfile } = res.data;
-              
-              localStorage.setItem('nexa_token', token);
-              localStorage.setItem('nexa_active_role', userProfile.role);
-              localStorage.setItem('nexa_active_user_id', userProfile.id);
-              localStorage.setItem('nexa_user_profile', JSON.stringify(userProfile));
-              
-              set({
-                currentUser: userProfile,
-                activeRole: userProfile.role,
-                token,
-                isInitialized: true,
-              });
-            } catch (error) {
-              set({ isInitialized: true });
-            }
-          } else {
-            // User is signed out
-            set({ currentUser: null, token: null, activeRole: 'patient', isInitialized: true });
-            queryClient.clear();
-            localStorage.removeItem('nexa_token');
-            localStorage.removeItem('nexa_active_role');
-            localStorage.removeItem('nexa_active_user_id');
-            localStorage.removeItem('nexa_user_profile');
-            sessionStorage.clear();
+            }, (error) => {
+              console.warn('[Firebase Auth state change error, falling back]:', error);
+              fallbackInit();
+            });
+          } catch (err) {
+            console.warn('[Firebase Auth setup error]:', err);
+            fallbackInit();
           }
-        });
-      });
-    });
+        }).catch(() => fallbackInit());
+      }).catch(() => fallbackInit());
+    } catch {
+      fallbackInit();
+    }
 
     return () => unsubscribe();
   },
