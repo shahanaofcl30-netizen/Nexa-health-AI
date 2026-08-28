@@ -955,32 +955,7 @@ class DataStore {
 
   public appointments: Appointment[] = [];
 
-  public treatments: Treatment[] = [
-    {
-      id: '75000000-0000-0000-0000-000000000001',
-      patientId: '50000000-0000-0000-0000-000000000001',
-      doctorId: '40000000-0000-0000-0000-000000000001',
-      hospitalId: '90000000-0000-0000-0000-000000000001',
-      appointmentId: '60000000-0000-0000-0000-000000000001',
-      symptoms: 'Mild morning dizziness and lightheadedness when rising rapidly; denies chest pain or palpitations.',
-      diagnosis: 'Essential (primary) hypertension, Stage 1 (ICD-10 I10); Orthostatic benign lightheadedness.',
-      treatmentDetails: 'Cardiovascular assessment and ECG completed. Blood pressure normalized at 122/80 mmHg. Continued Lisinopril therapy with fluid hydration optimization.',
-      clinicalNotes: 'Patient advised on hydration during warm weather. Penicillin allergy confirmed and documented. Prescribed Lisinopril 10mg PO Daily.',
-      medicines: [
-        {
-          id: uuidv4(),
-          medicationName: 'Lisinopril',
-          dosage: '10mg',
-          frequency: 'Once daily in the morning',
-          durationDays: 30,
-          instructions: 'Take 1 tablet every morning with a full glass of water.',
-        },
-      ],
-      followUpDate: '2026-09-24',
-      prescriptionId: '80000000-0000-0000-0000-000000000001',
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
-    },
-  ];
+  public treatments: Treatment[] = [];
 
   public vitals: (Vitals & { id: string; patientId: string; appointmentId?: string })[] = [
     {
