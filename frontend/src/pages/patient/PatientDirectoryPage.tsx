@@ -51,17 +51,7 @@ export const PatientDirectoryPage: React.FC = () => {
         api.get('/appointments')
       ]);
       
-      // Filter out test/dummy patients as requested by user
-      const filtered = res.data.filter((p: Patient) => {
-        const fullName = `${p.firstName} ${p.lastName || ''}`.toLowerCase();
-        if (fullName.includes('robert johnson')) return false;
-        if (fullName.includes('shahana k')) return false;
-        if (fullName.includes('emily davis')) return false;
-        if (fullName === 'shahana ') return false; // Exact match for the other shahana
-        return true;
-      });
-      
-      setPatients(filtered);
+      setPatients(res.data);
       setAppointments(aptRes.data);
     } catch (err) {
       console.error('Failed to fetch data:', err);
@@ -179,25 +169,32 @@ export const PatientDirectoryPage: React.FC = () => {
                   <span className="font-bold text-slate-800">Reason for Visit:</span>{' '}
                   <span className="text-primary font-bold">
                     {(() => {
-                      const patientFullName = `${patient.firstName} ${patient.lastName || ''}`.trim().toLowerCase();
-                      const matchedApt = appointments.find((a) => {
+                      const patientFullName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim().toLowerCase();
+                      
+                      // Find matching appointments for this specific patient
+                      const patientAppointments = appointments.filter((a) => {
                         if (a.patientId && (a.patientId === patient.id || a.patientId === patient.userId)) return true;
                         if (a.patient?.id && (a.patient.id === patient.id || a.patient.id === patient.userId)) return true;
-                        if (a.patientName && a.patientName.toLowerCase() === patientFullName) return true;
+                        if (a.patientName && a.patientName.trim().toLowerCase() === patientFullName) return true;
                         const aptPatName = a.patient ? `${a.patient.firstName || ''} ${a.patient.lastName || ''}`.trim().toLowerCase() : '';
                         if (aptPatName && aptPatName === patientFullName) return true;
                         if (a.patient?.mrn && a.patient.mrn.toLowerCase() === patient.mrn?.toLowerCase()) return true;
                         return false;
                       });
 
-                      if (matchedApt?.reason) return matchedApt.reason;
-                      if (patient.chronicConditions && patient.chronicConditions.length > 0) {
-                        return `${patient.chronicConditions.join(', ')} consultation`;
+                      // Prefer scheduled or active appointments, or most recently created
+                      const activeApt = patientAppointments.find(a => a.status === 'scheduled' || a.status === 'in_consultation' || a.status === 'checked_in') || patientAppointments[0];
+
+                      if (activeApt?.reason) {
+                        return activeApt.reason;
                       }
-                      if (patient.livingSummary && !patient.livingSummary.includes('Personal digital health profile')) {
-                        return patient.livingSummary.split('.')[0];
+
+                      // Check if patient profile was initialized with a clinical summary
+                      if (patient.livingSummary && !patient.livingSummary.includes('Personal digital health profile') && !patient.livingSummary.includes('established') && !patient.livingSummary.includes('Newly registered')) {
+                        return patient.livingSummary;
                       }
-                      return 'General Health Checkup & Consultation';
+
+                      return 'Reason not provided';
                     })()}
                   </span>
                 </div>
