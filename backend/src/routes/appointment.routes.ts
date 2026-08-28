@@ -14,11 +14,19 @@ router.get('/', (req: AuthenticatedRequest, res: Response) => {
 
   let results = store.appointments;
 
+  // Enforce patient-level isolation: if caller is a patient, resolve their patient profile
+  if (req.user && req.user.role === 'patient') {
+    const callerPatient = store.patients.find(
+      (p) => (p.userId && p.userId === req.user!.id) || (p.email && p.email.toLowerCase() === req.user!.email.toLowerCase()) || p.id === req.user!.id
+    );
+    const effectivePatientId = callerPatient ? callerPatient.id : req.user.id;
+    results = results.filter((a) => a.patientId === effectivePatientId || (callerPatient && a.patientId === callerPatient.id));
+  } else if (patientId) {
+    results = results.filter((a) => a.patientId === patientId);
+  }
+
   if (doctorId) {
     results = results.filter((a) => a.doctorId === doctorId);
-  }
-  if (patientId) {
-    results = results.filter((a) => a.patientId === patientId);
   }
   if (hospitalId) {
     results = results.filter((a) => a.hospitalId === hospitalId);
@@ -135,13 +143,20 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
   }
 
   // 3. Double Booking Check (Firestore + Store)
-  const doubleBookedQuery = await firebaseAdminDb.collection('appointments')
-    .where('doctorId', '==', doctorId)
-    .where('dateTime', '==', dateTime)
-    .get();
-
-  const isDoubleBooked = doubleBookedQuery.docs.some(doc => doc.data().status !== 'cancelled') || 
-                         store.appointments.some(a => a.doctorId === doctorId && a.dateTime === dateTime && a.status !== 'cancelled');
+  let isDoubleBooked = store.appointments.some(a => a.doctorId === doctorId && a.dateTime === dateTime && a.status !== 'cancelled');
+  try {
+    if (firebaseAdminDb) {
+      const doubleBookedQuery = await firebaseAdminDb.collection('appointments')
+        .where('doctorId', '==', doctorId)
+        .where('dateTime', '==', dateTime)
+        .get();
+      if (doubleBookedQuery.docs.some(doc => doc.data().status !== 'cancelled')) {
+        isDoubleBooked = true;
+      }
+    }
+  } catch (e) {
+    // Fall back to in-memory store
+  }
   
   if (isDoubleBooked) {
     return res.status(409).json({ error: 'This time slot is no longer available. Please select another time.' });
@@ -149,6 +164,12 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
 
   // 2. Handle New Patient Creation
   let patientId = existingPatientId;
+  if (!patientId && req.user && req.user.role === 'patient') {
+    const callerPatient = store.patients.find(
+      (p) => (p.userId && p.userId === req.user!.id) || (p.email && p.email.toLowerCase() === req.user!.email.toLowerCase()) || p.id === req.user!.id
+    );
+    patientId = callerPatient ? callerPatient.id : req.user.id;
+  }
   let patient;
 
   if (isNewPatient && patientName) {
