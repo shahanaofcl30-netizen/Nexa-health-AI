@@ -38,17 +38,17 @@ export const Sidebar: React.FC = () => {
     switch (activeRole) {
       case 'patient':
         return [
-          { to: '/patient-portal', label: 'My Health Portal', icon: Home },
-          { to: '/hospitals', label: 'Find Hospital & Book', icon: Building2, badge: 'New' },
-          { to: '/appointments', label: 'My Appointments', icon: Calendar },
-          { to: '/treatments', label: 'My Treatments', icon: History },
-          { to: '/prescriptions', label: 'My Prescriptions', icon: Pill },
-          { to: '/pharmacies', label: 'Nearby Pharmacies', icon: MapPin },
-          { to: '/labs', label: 'Lab Reports', icon: FlaskConical },
-          { to: '/billing', label: 'Bills & Insurance', icon: CreditCard },
-          { to: '/telehealth', label: 'Telehealth Room', icon: Video },
-          { to: '/reminders', label: 'Med Reminders', icon: Clock },
-          { to: '/records-vault', label: 'Medical Records Vault', icon: FolderLock },
+          { to: '/patient-portal', label: 'Dashboard', icon: Home },
+          { to: '/hospitals', label: 'Hospitals', icon: Building2, badge: 'New' },
+          { to: '/appointments', label: 'Appointments', icon: Calendar },
+          { to: '/treatments', label: 'Treatments', icon: History },
+          { to: '/prescriptions', label: 'Medicines', icon: Pill },
+          { to: '/pharmacies', label: 'Pharmacies', icon: MapPin },
+          { to: '/labs', label: 'Lab Results', icon: FlaskConical },
+          { to: '/billing', label: 'Billing', icon: CreditCard },
+          { to: '/telehealth', label: 'Video Calls', icon: Video },
+          { to: '/reminders', label: 'Reminders', icon: Clock },
+          { to: '/records-vault', label: 'Medical Records', icon: FolderLock },
         ];
 
       case 'nurse':
@@ -124,7 +124,7 @@ export const Sidebar: React.FC = () => {
   const navItems = getNavItems();
 
   return (
-    <aside className="w-64 border-r border-slate-800/80 bg-[#0B101E]/70 backdrop-blur-md flex flex-col justify-between p-4 hidden md:flex min-h-[calc(100vh-4rem)]">
+    <aside className="w-64 border-r border-secondary bg-white flex flex-col justify-between p-4 hidden md:flex min-h-[calc(100vh-4rem)]">
       <div className="space-y-6">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 mb-2">
@@ -141,8 +141,8 @@ export const Sidebar: React.FC = () => {
                   className={({ isActive }) =>
                     `flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
                       isActive
-                        ? 'bg-gradient-to-r from-brand-600/30 to-brand-500/10 text-brand-300 border border-brand-500/30 shadow-sm font-semibold'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                        ? 'bg-primary/10 text-primary border border-primary/20 shadow-sm font-semibold'
+                        : 'text-slate-600 hover:text-primary hover:bg-secondary/20'
                     }`
                   }
                 >
@@ -151,7 +151,7 @@ export const Sidebar: React.FC = () => {
                     <span>{item.label}</span>
                   </div>
                   {item.badge && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-300 border border-brand-500/30">
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/20 text-primary border border-primary/30">
                       {item.badge}
                     </span>
                   )}
@@ -168,18 +168,18 @@ export const Sidebar: React.FC = () => {
             useAuthStore.getState().logout();
             window.location.href = '/login';
           }}
-          className="w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border border-rose-500/20 font-semibold transition-all"
+          className="w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-xs text-critical hover:text-critical hover:bg-critical/10 border border-critical/20 font-semibold transition-all"
         >
           <FolderLock className="w-4 h-4" />
-          <span>Sign Out / Log Out</span>
+          <span>Sign Out</span>
         </button>
 
-        <div className="p-3 rounded-2xl bg-gradient-to-br from-brand-950/40 via-slate-900 to-slate-950 border border-brand-500/20 text-xs">
+        <div className="p-3 rounded-2xl bg-secondary/30 border border-secondary text-xs">
           <div className="flex items-center space-x-2 mb-1">
-            <div className="w-2 h-2 rounded-full bg-brand-400 animate-ping" />
-            <span className="text-[10px] font-mono uppercase text-brand-300 font-bold">Autonomous Agents Active</span>
+            <div className="w-2 h-2 rounded-full bg-primary animate-ping" />
+            <span className="text-[10px] font-mono uppercase text-primary font-bold">Agents Active</span>
           </div>
-          <p className="text-[11px] text-slate-400">9 Specialist Medical AI Agents running in continuous orchestration.</p>
+          <p className="text-[11px] text-slate-500">9 Medical AI Agents running.</p>
         </div>
       </div>
     </aside>

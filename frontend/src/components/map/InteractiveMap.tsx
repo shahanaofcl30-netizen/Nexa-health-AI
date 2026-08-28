@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import L from 'leaflet';
 import {
   ExternalLink,
   Building2,
@@ -9,9 +10,8 @@ import {
 import { Hospital, Pharmacy } from '../../types/shared';
 
 interface InteractiveMapProps {
-  isGoogleLoaded?: boolean;
-  mapAuthError?: boolean;
   hospital?: Hospital | null;
+  hospitalsList?: Hospital[];
   patientLocation?: { latitude: number; longitude: number } | null;
   pharmacies?: Pharmacy[];
   selectedPharmacy?: Pharmacy | null;
@@ -20,216 +20,211 @@ interface InteractiveMapProps {
   radiusKm?: number;
   onRadiusChange?: (radius: number) => void;
   heightClass?: string;
+  isGoogleLoaded?: boolean; // Kept for backwards compatibility
+  mapAuthError?: boolean;
 }
 
 export const InteractiveMap: React.FC<InteractiveMapProps> = ({
-  isGoogleLoaded = false,
-  mapAuthError = false,
   hospital,
+  hospitalsList = [],
   patientLocation = null,
   pharmacies = [],
   selectedPharmacy,
   onSelectPharmacy,
   onSelectHospital,
-  radiusKm,
-  onRadiusChange,
   heightClass = 'h-96',
 }) => {
-  // State for which popup is active (hospital-<id> or pharmacy-<id>)
   const [activePopup, setActivePopup] = useState<string | null>(null);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<{ [key: string]: google.maps.Marker }>({});
-  const patientMarkerRef = useRef<google.maps.Marker | null>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const markersLayerRef = useRef<L.LayerGroup | null>(null);
 
-  // Helper to build a Google Maps directions URL using the appropriate origin.
+  // Helper to build a directions URL using patient location or hospital origin
   const getDirectionsUrl = (destLat: number, destLng: number) => {
-    const origin = patientLocation
-      ? `${patientLocation.latitude},${patientLocation.longitude}`
-      : hospital
-      ? `${hospital.latitude},${hospital.longitude}`
-      : '';
-    return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destLat},${destLng}`;
+    if (patientLocation) {
+      return `https://www.google.com/maps/dir/?api=1&origin=${patientLocation.latitude},${patientLocation.longitude}&destination=${destLat},${destLng}`;
+    }
+    if (hospital) {
+      return `https://www.google.com/maps/dir/?api=1&origin=${hospital.latitude},${hospital.longitude}&destination=${destLat},${destLng}`;
+    }
+    return `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}`;
   };
 
-  // Initialise the map instance once Google is loaded
-  const initMap = () => {
-    if (!mapContainerRef.current || mapInstance.current) return;
-    const center = patientLocation
-      ? { lat: patientLocation.latitude, lng: patientLocation.longitude }
-      : hospital
-      ? { lat: hospital.latitude, lng: hospital.longitude }
-      : { lat: 11.1271, lng: 78.6569 }; // fallback (Tamil Nadu centre)
-    
-    const mapOpts: google.maps.MapOptions = {
-      center,
-      zoom: 13,
-      mapTypeId: 'roadmap',
-    };
-    mapInstance.current = new google.maps.Map(mapContainerRef.current, mapOpts);
-    updateAllMarkers();
-  };
-
+  // Initialize Leaflet Map
   useEffect(() => {
-    if (isGoogleLoaded) {
-      initMap();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isGoogleLoaded]);
+    if (!mapContainerRef.current) return;
 
-  // Update markers whenever relevant data changes
-  useEffect(() => {
-    if (mapInstance.current && isGoogleLoaded) {
-      updateAllMarkers();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hospital, patientLocation, pharmacies, isGoogleLoaded]);
+    if (!mapInstanceRef.current) {
+      const initialLat = patientLocation?.latitude ?? hospital?.latitude ?? 11.1271;
+      const initialLng = patientLocation?.longitude ?? hospital?.longitude ?? 78.6569;
 
-  // Helper to clear existing markers
-  const clearMarkers = () => {
-    Object.values(markersRef.current).forEach((m) => m.setMap(null));
-    markersRef.current = {};
-    if (patientMarkerRef.current) {
-      patientMarkerRef.current.setMap(null);
-      patientMarkerRef.current = null;
-    }
-  };
-
-  // Create markers for hospital(s), patient and pharmacies
-  const updateAllMarkers = () => {
-    clearMarkers();
-    if (!mapInstance.current || !isGoogleLoaded) return;
-
-    // Hospital markers (single or list)
-    const hospitalsToShow = hospital ? [hospital] : [];
-    hospitalsToShow.forEach((h) => {
-      const marker = new google.maps.Marker({
-        position: { lat: h.latitude, lng: h.longitude },
-        map: mapInstance.current,
-        title: h.name,
-        icon: {
-          url: 'https://maps.gstatic.com/mapfiles/api-3/images/spotlight-poi2_hdpi.png',
-          scaledSize: new google.maps.Size(30, 30),
-        },
+      const map = L.map(mapContainerRef.current, {
+        center: [initialLat, initialLng],
+        zoom: 13,
+        zoomControl: true,
       });
-      marker.addListener('click', () => {
+
+      // OpenStreetMap TileLayer with standard attribution
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+      }).addTo(map);
+
+      const markersGroup = L.layerGroup().addTo(map);
+      markersLayerRef.current = markersGroup;
+      mapInstanceRef.current = map;
+    }
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+        markersLayerRef.current = null;
+      }
+    };
+  }, []);
+
+  // Update Markers
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const markersGroup = markersLayerRef.current;
+    if (!map || !markersGroup) return;
+
+    markersGroup.clearLayers();
+
+    // 1. Patient Location Marker
+    if (patientLocation) {
+      const patientIcon = L.divIcon({
+        className: 'custom-patient-marker',
+        html: `
+          <div style="position: relative; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
+            <div style="position: absolute; width: 24px; height: 24px; border-radius: 50%; background-color: rgba(59, 130, 246, 0.4); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+            <div style="width: 14px; height: 14px; border-radius: 50%; background-color: #2563EB; border: 2.5px solid #FFFFFF; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>
+          </div>
+        `,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      });
+
+      const patientMarker = L.marker([patientLocation.latitude, patientLocation.longitude], {
+        icon: patientIcon,
+        title: 'Your Current Location',
+        zIndexOffset: 1000,
+      });
+      patientMarker.bindTooltip('📍 You are here', { permanent: false, direction: 'top' });
+      markersGroup.addLayer(patientMarker);
+    }
+
+    // 2. Hospital Markers
+    const hospitalsToShow = hospitalsList.length > 0 ? hospitalsList : (hospital ? [hospital] : []);
+    hospitalsToShow.forEach((h) => {
+      const hospitalIcon = L.divIcon({
+        className: 'custom-hospital-marker',
+        html: `
+          <div style="background-color: #E11D48; color: white; width: 32px; height: 32px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 3px 6px rgba(0,0,0,0.35);">
+            <div style="transform: rotate(45deg); font-size: 14px; font-weight: bold;">🏥</div>
+          </div>
+        `,
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+      });
+
+      const marker = L.marker([h.latitude, h.longitude], {
+        icon: hospitalIcon,
+        title: h.name,
+      });
+
+      marker.on('click', () => {
         setActivePopup(`hospital-${h.id}`);
         if (onSelectHospital) onSelectHospital(h);
       });
-      markersRef.current[`hospital-${h.id}`] = marker;
+
+      markersGroup.addLayer(marker);
     });
 
-    // Patient location marker
-    if (patientLocation) {
-      const marker = new google.maps.Marker({
-        position: { lat: patientLocation.latitude, lng: patientLocation.longitude },
-        map: mapInstance.current,
-        title: 'Your Location',
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 8,
-          fillColor: '#00BFFF',
-          fillOpacity: 0.9,
-          strokeWeight: 2,
-          strokeColor: '#ffffff',
-        },
-      });
-      patientMarkerRef.current = marker;
-    }
-
-    // Pharmacy markers
+    // 3. Pharmacy Markers
     pharmacies.forEach((p) => {
-      const marker = new google.maps.Marker({
-        position: { lat: p.latitude, lng: p.longitude },
-        map: mapInstance.current,
-        title: p.name,
-        icon: {
-          url: 'https://maps.gstatic.com/mapfiles/api-3/images/spotlight-poi2_hdpi.png',
-          scaledSize: new google.maps.Size(30, 30),
-        },
+      const isSelected = selectedPharmacy?.id === p.id;
+      const bgColor = isSelected ? '#2563EB' : '#10B981';
+      const pharmacyIcon = L.divIcon({
+        className: 'custom-pharmacy-marker',
+        html: `
+          <div style="background-color: ${bgColor}; color: white; width: 30px; height: 30px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 3px 6px rgba(0,0,0,0.3); transition: all 0.2s ease;">
+            <div style="transform: rotate(45deg); font-size: 13px;">💊</div>
+          </div>
+        `,
+        iconSize: [30, 30],
+        iconAnchor: [15, 30],
       });
-      marker.addListener('click', () => {
+
+      const marker = L.marker([p.latitude, p.longitude], {
+        icon: pharmacyIcon,
+        title: p.name,
+        zIndexOffset: isSelected ? 500 : 100,
+      });
+
+      marker.on('click', () => {
         setActivePopup(`pharmacy-${p.id}`);
         if (onSelectPharmacy) onSelectPharmacy(p);
       });
-      markersRef.current[`pharmacy-${p.id}`] = marker;
-    });
-  };
 
-  // Keep map centered on patient location when it changes
+      markersGroup.addLayer(marker);
+    });
+  }, [hospital, hospitalsList, patientLocation, pharmacies, selectedPharmacy, onSelectHospital, onSelectPharmacy]);
+
+  // Center/Pan on selected pharmacy or patient location
   useEffect(() => {
-    if (mapInstance.current && patientLocation && isGoogleLoaded) {
-      mapInstance.current.setCenter({ lat: patientLocation.latitude, lng: patientLocation.longitude });
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (selectedPharmacy) {
+      map.setView([selectedPharmacy.latitude, selectedPharmacy.longitude], 15, { animate: true });
+    } else if (patientLocation) {
+      map.setView([patientLocation.latitude, patientLocation.longitude], 13, { animate: true });
+    } else if (hospital) {
+      map.setView([hospital.latitude, hospital.longitude], 13, { animate: true });
     }
-  }, [patientLocation, isGoogleLoaded]);
+  }, [selectedPharmacy, patientLocation, hospital]);
 
   return (
-    <div className={`relative w-full ${heightClass}`} ref={mapContainerRef}>
-      {mapAuthError && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900 rounded-3xl border border-rose-500/30 p-6 text-center">
-          <div className="w-12 h-12 rounded-full bg-rose-500/20 flex items-center justify-center mb-3">
-            <X className="w-6 h-6 text-rose-400" />
-          </div>
-          <h3 className="text-white font-bold text-lg mb-1">Map Unavailable</h3>
-          <p className="text-slate-400 text-sm max-w-xs">
-            Google Maps requires a valid API key and billing account. Please check your configuration.
-          </p>
-        </div>
-      )}
-      
-      {!isGoogleLoaded && !mapAuthError && (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900 rounded-3xl border border-slate-800">
-           <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-           <p className="text-slate-400 text-sm">Loading Google Maps...</p>
-        </div>
-      )}
-      
+    <div className={`relative w-full rounded-2xl overflow-hidden border border-secondary shadow-sm ${heightClass}`}>
+      <div ref={mapContainerRef} className="w-full h-full z-0" />
+
       {/* Hospital Info Popup */}
       {activePopup && activePopup.startsWith('hospital-') && (
-        <div className="absolute bottom-4 left-4 right-4 sm:w-80 z-40 p-4 rounded-2xl glass-card border border-rose-500/40 shadow-2xl animate-in fade-in">
+        <div className="absolute bottom-4 left-4 right-4 sm:w-80 z-[1000] p-4 rounded-2xl bg-white border border-secondary shadow-xl animate-in fade-in">
           {(() => {
             const hospId = activePopup.replace('hospital-', '');
-            const targetHosp = hospital && hospital.id === hospId ? hospital : null;
+            const targetHosp = hospital && hospital.id === hospId 
+              ? hospital 
+              : hospitalsList.find(h => h.id === hospId);
             if (!targetHosp) return null;
             return (
               <>
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono uppercase font-bold text-rose-400 flex items-center">
-                    <Building2 className="w-3.5 h-3.5 mr-1" /> {targetHosp.hospitalType || 'Hospital Anchor'}
+                  <span className="text-xs font-bold text-rose-500 flex items-center">
+                    <Building2 className="w-3.5 h-3.5 mr-1" /> {targetHosp.hospitalType || 'Hospital'}
                   </span>
-                  <button onClick={() => setActivePopup(null)} className="text-slate-400 hover:text-white">
-                    <X className="w-3.5 h-3.5" />
+                  <button onClick={() => setActivePopup(null)} className="text-slate-400 hover:text-slate-900 p-1">
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
-                <h4 className="font-bold text-sm text-white">{targetHosp.name}</h4>
-                <p className="text-xs text-slate-300">
-                  {targetHosp.address}, {targetHosp.city}, {targetHosp.district}
+                <h4 className="font-bold text-base text-slate-900 mt-1">{targetHosp.name}</h4>
+                <p className="text-sm text-slate-600">
+                  {targetHosp.address}, {targetHosp.city}
                 </p>
-                <p className="text-[11px] text-slate-400 font-mono flex items-center">
-                  <Phone className="w-3 h-3 text-slate-500 mr-1" /> {targetHosp.phone}
-                  {targetHosp.emergencyPhone && (
-                    <span className="text-rose-400 ml-2 font-bold">ER: {targetHosp.emergencyPhone}</span>
-                  )}
+                <p className="text-sm text-slate-500 font-mono flex items-center mt-1">
+                  <Phone className="w-3.5 h-3.5 text-slate-400 mr-1" /> {targetHosp.phone}
                 </p>
-                <div className="pt-2 flex items-center space-x-2 text-[10px]">
-                  <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-semibold">
-                    {targetHosp.openingHours}
-                  </span>
-                  {targetHosp.distanceKm !== undefined && (
-                    <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono font-bold">
-                      📍 {targetHosp.distanceKm} km
-                    </span>
-                  )}
-                </div>
-                <div className="pt-2 flex items-center space-x-2">
+                <div className="pt-3 flex items-center space-x-2">
                   <a
                     href={getDirectionsUrl(targetHosp.latitude, targetHosp.longitude)}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex-1 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-[11px] flex items-center justify-center space-x-1 transition-all"
+                    className="flex-1 py-1.5 rounded-xl bg-white border border-secondary hover:bg-secondary/20 text-slate-700 font-bold text-sm flex items-center justify-center space-x-1 transition-all"
                   >
-                    <ExternalLink className="w-3 h-3" />
+                    <ExternalLink className="w-4 h-4" />
                     <span>Get Directions</span>
                   </a>
                 </div>
@@ -241,7 +236,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
       {/* Pharmacy Info Popup */}
       {activePopup && activePopup.startsWith('pharmacy-') && (
-        <div className="absolute bottom-4 left-4 right-4 sm:w-80 z-40 p-4 rounded-2xl glass-card border border-brand-500/40 shadow-2xl animate-in fade-in">
+        <div className="absolute bottom-4 left-4 right-4 sm:w-80 z-[1000] p-4 rounded-2xl bg-white border border-secondary shadow-xl animate-in fade-in">
           {(() => {
             const pharmId = activePopup.replace('pharmacy-', '');
             const pharm = pharmacies.find((p) => p.id === pharmId);
@@ -249,27 +244,29 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
             return (
               <>
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono uppercase font-bold text-brand-400 flex items-center">
+                  <span className="text-xs font-bold text-primary flex items-center">
                     <Pill className="w-3.5 h-3.5 mr-1" /> Nearby Pharmacy
                   </span>
-                  <button onClick={() => setActivePopup(null)} className="text-slate-400 hover:text-white">
-                    <X className="w-3.5 h-3.5" />
+                  <button onClick={() => setActivePopup(null)} className="text-slate-400 hover:text-slate-900 p-1">
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
-                <h4 className="font-bold text-sm text-white">{pharm.name}</h4>
-                <p className="text-xs text-slate-300">{pharm.address}, {pharm.city}</p>
-                <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-1">
-                  <span>📍 {pharm.distanceKm !== undefined ? `${pharm.distanceKm} km from Hospital` : 'Nearby'}</span>
-                  <span className="text-emerald-400">{pharm.isOpen24Hours ? 'Open 24/7' : 'Open'}</span>
+                <h4 className="font-bold text-base text-slate-900 mt-1">{pharm.name}</h4>
+                <p className="text-sm text-slate-600">{pharm.address}, {pharm.city}</p>
+                <div className="flex items-center justify-between text-xs font-mono text-slate-500 pt-2">
+                  <span className="font-bold text-primary">
+                    📍 {pharm.distanceKm !== undefined ? `${pharm.distanceKm} km` : 'Road distance'}
+                  </span>
+                  <span className="text-emerald-600 font-bold">{pharm.isOpen24Hours ? 'Open 24/7' : 'Open'}</span>
                 </div>
-                <div className="pt-2 flex items-center space-x-2">
+                <div className="pt-3 flex items-center space-x-2">
                   <a
                     href={getDirectionsUrl(pharm.latitude, pharm.longitude)}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex-1 py-1.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-[11px] flex items-center justify-center space-x-1 transition-all"
+                    className="flex-1 py-1.5 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-sm flex items-center justify-center space-x-1 transition-all shadow-sm"
                   >
-                    <ExternalLink className="w-3 h-3" />
+                    <ExternalLink className="w-4 h-4" />
                     <span>Get Directions</span>
                   </a>
                 </div>
@@ -281,3 +278,4 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     </div>
   );
 };
+

@@ -65,24 +65,24 @@ export const PatientTreatmentsPage: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <h1 className="text-2xl font-bold text-white tracking-tight">My Treatments & Clinical History</h1>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20 font-mono">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">My Treatments & Clinical History</h1>
+            <span className="text-sm px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-bold">
               EHR Synchronized
             </span>
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-sm text-slate-600">
             Official consultation records, prescribed therapeutic regimens, diagnostic assessments, and hospital pharmacy connections
           </p>
         </div>
       </div>
 
       {/* Search Bar */}
-      <div className="p-4 rounded-2xl glass-card border border-slate-800 flex items-center space-x-3">
+      <div className="p-4 rounded-2xl bg-white border border-secondary shadow-sm flex items-center space-x-3">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -90,7 +90,7 @@ export const PatientTreatmentsPage: React.FC = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search treatments by diagnosis, symptoms, hospital, or physician..."
-            className="w-full pl-9 pr-4 py-2 text-xs rounded-xl glass-input text-white placeholder:text-slate-500 focus:outline-none"
+            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-secondary bg-white text-slate-900 placeholder:text-slate-500 focus:outline-none focus:border-primary"
           />
         </div>
       </div>
@@ -98,7 +98,7 @@ export const PatientTreatmentsPage: React.FC = () => {
       {/* Treatments List */}
       <div className="space-y-4">
         {filtered.length === 0 ? (
-          <div className="p-12 rounded-3xl glass-card border border-slate-800 text-center text-slate-500 text-xs">
+          <div className="p-12 rounded-3xl bg-white border border-secondary shadow-sm text-center text-slate-500 text-sm">
             No completed treatment records found.
           </div>
         ) : (
@@ -110,25 +110,25 @@ export const PatientTreatmentsPage: React.FC = () => {
             return (
               <div
                 key={treatment.id}
-                className="p-6 rounded-3xl glass-card border border-slate-800 glass-card-hover space-y-4 transition-all"
+                className="p-6 rounded-3xl bg-white border border-secondary hover:shadow-md transition-all space-y-4"
               >
                 {/* Top Row: Hospital & Doctor Information */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-secondary">
                   <div className="flex items-center space-x-3">
-                    <div className="w-11 h-11 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center justify-center">
+                    <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center">
                       <Building2 className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm text-white flex items-center space-x-2">
+                      <h3 className="font-bold text-base text-slate-900 flex items-center space-x-2">
                         <span>{hospital?.name || 'Apollo Hospital & Medical Center'}</span>
-                        <span className="text-xs font-normal text-slate-400 font-mono">
+                        <span className="text-sm font-normal text-slate-500 font-mono">
                           ({hospital?.city || 'San Francisco'})
                         </span>
                       </h3>
-                      <p className="text-[11px] text-slate-400 flex items-center mt-0.5">
-                        <Stethoscope className="w-3.5 h-3.5 text-brand-400 mr-1" />
+                      <p className="text-sm text-slate-600 flex items-center mt-0.5">
+                        <Stethoscope className="w-3.5 h-3.5 text-primary mr-1" />
                         Dr. {doctorUser ? `${doctorUser.firstName} ${doctorUser.lastName}` : 'Sophia Chen'} ({doctor?.specialization || 'Cardiology'})
-                        <span className="mx-2 text-slate-600">•</span>
+                        <span className="mx-2 text-slate-400">•</span>
                         Encounter Date: {new Date(treatment.createdAt).toLocaleDateString()}
                       </p>
                     </div>
@@ -137,35 +137,35 @@ export const PatientTreatmentsPage: React.FC = () => {
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => handleFindPharmacyNearHospital(hospital)}
-                      className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-bold text-xs shadow-glow-cyan flex items-center space-x-1.5 transition-all"
+                      className="px-3.5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-sm shadow-sm flex items-center space-x-1.5 transition-all"
                     >
                       <Pill className="w-3.5 h-3.5" />
-                      <span>Find Pharmacy Near Hospital</span>
+                      <span>Pharmacy Near Hospital</span>
                     </button>
 
                     <button
                       onClick={() => setSelectedTreatment(treatment)}
-                      className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center space-x-1 transition-colors"
+                      className="px-3 py-2 rounded-xl bg-white border border-secondary hover:bg-secondary/20 text-slate-700 text-sm font-bold flex items-center space-x-1 transition-colors"
                     >
-                      <Eye className="w-3.5 h-3.5 text-brand-400" />
-                      <span>View Details</span>
+                      <Eye className="w-3.5 h-3.5 text-primary" />
+                      <span>Details</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Middle: Diagnosis & Treatment Summary */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                  <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
-                    <span className="text-[10px] uppercase font-bold text-brand-400">Clinical Diagnosis</span>
-                    <p className="text-white font-semibold">{treatment.diagnosis}</p>
-                    <p className="text-[11px] text-slate-400 pt-1">Symptoms: {treatment.symptoms}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div className="p-3.5 rounded-2xl bg-secondary/10 border border-secondary space-y-1">
+                    <span className="text-xs uppercase font-bold text-primary">Clinical Diagnosis</span>
+                    <p className="text-slate-900 font-bold">{treatment.diagnosis}</p>
+                    <p className="text-xs text-slate-700 pt-1">Symptoms: {treatment.symptoms}</p>
                   </div>
 
-                  <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
-                    <span className="text-[10px] uppercase font-bold text-brand-400">Treatment Plan</span>
-                    <p className="text-slate-200">{treatment.treatmentDetails}</p>
+                  <div className="p-3.5 rounded-2xl bg-secondary/10 border border-secondary space-y-1">
+                    <span className="text-xs uppercase font-bold text-primary">Treatment Plan</span>
+                    <p className="text-slate-700 font-medium">{treatment.treatmentDetails}</p>
                     {treatment.followUpDate && (
-                      <p className="text-[11px] text-emerald-400 font-mono pt-1">
+                      <p className="text-xs text-emerald-600 font-bold pt-1">
                         Follow-up Scheduled: {treatment.followUpDate}
                       </p>
                     )}
@@ -174,17 +174,17 @@ export const PatientTreatmentsPage: React.FC = () => {
 
                 {/* Bottom: Prescribed Medicines Chips */}
                 {treatment.medicines && treatment.medicines.length > 0 && (
-                  <div className="pt-2 flex flex-wrap items-center gap-2 text-xs">
-                    <span className="text-[10px] uppercase font-bold text-slate-500 flex items-center">
+                  <div className="pt-2 flex flex-wrap items-center gap-2 text-sm">
+                    <span className="text-xs uppercase font-bold text-slate-500 flex items-center">
                       <Pill className="w-3.5 h-3.5 mr-1" /> Prescribed:
                     </span>
                     {treatment.medicines.map((med, i) => (
                       <span
                         key={i}
-                        className="px-3 py-1 rounded-xl bg-slate-900 text-slate-200 border border-slate-700 font-mono text-[11px] flex items-center space-x-1"
+                        className="px-3 py-1 rounded-xl bg-white text-slate-700 border border-secondary font-mono text-xs flex items-center space-x-1 shadow-sm"
                       >
-                        <span className="font-bold text-brand-300">{med.medicationName}</span>
-                        <span className="text-slate-400">({med.dosage})</span>
+                        <span className="font-bold text-primary">{med.medicationName}</span>
+                        <span className="text-slate-500">({med.dosage})</span>
                         <span className="text-slate-500">• {med.frequency}</span>
                       </span>
                     ))}
@@ -198,53 +198,53 @@ export const PatientTreatmentsPage: React.FC = () => {
 
       {/* Treatment Full Detail Modal */}
       {selectedTreatment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-2xl glass-card rounded-3xl border border-slate-700 p-6 space-y-4 text-xs shadow-2xl overflow-y-auto max-h-[85vh]">
-            <div className="flex items-start justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="w-full max-w-2xl bg-white rounded-3xl border border-secondary p-6 space-y-4 shadow-lg overflow-y-auto max-h-[85vh]">
+            <div className="flex items-start justify-between border-b border-secondary pb-3">
               <div>
-                <span className="text-[10px] font-mono uppercase font-bold text-brand-400">
+                <span className="text-xs font-mono uppercase font-bold text-primary">
                   Comprehensive Treatment Record
                 </span>
-                <h3 className="font-bold text-base text-white mt-0.5">{selectedTreatment.diagnosis}</h3>
-                <p className="text-xs text-slate-400">
+                <h3 className="font-bold text-xl text-slate-900 mt-1">{selectedTreatment.diagnosis}</h3>
+                <p className="text-sm text-slate-600">
                   {selectedTreatment.hospital?.name} • Encounter {new Date(selectedTreatment.createdAt).toLocaleDateString()}
                 </p>
               </div>
               <button
                 onClick={() => setSelectedTreatment(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800"
+                className="text-slate-400 hover:text-slate-900 p-1 rounded-lg bg-secondary/20"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-3">
-              <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-1">
-                <span className="font-bold text-white">Presenting Symptoms:</span>
-                <p className="text-slate-300">{selectedTreatment.symptoms}</p>
+            <div className="space-y-4 text-sm">
+              <div className="p-4 rounded-2xl bg-secondary/10 border border-secondary space-y-1">
+                <span className="font-bold text-slate-900">Presenting Symptoms:</span>
+                <p className="text-slate-700">{selectedTreatment.symptoms}</p>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-1">
-                <span className="font-bold text-white">Treatment & Clinical Details:</span>
-                <p className="text-slate-300">{selectedTreatment.treatmentDetails}</p>
+              <div className="p-4 rounded-2xl bg-secondary/10 border border-secondary space-y-1">
+                <span className="font-bold text-slate-900">Treatment & Clinical Details:</span>
+                <p className="text-slate-700">{selectedTreatment.treatmentDetails}</p>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-1">
-                <span className="font-bold text-white">Doctor Clinical Notes:</span>
-                <p className="text-slate-300 italic">{selectedTreatment.clinicalNotes || 'None recorded.'}</p>
+              <div className="p-4 rounded-2xl bg-secondary/10 border border-secondary space-y-1">
+                <span className="font-bold text-slate-900">Doctor Clinical Notes:</span>
+                <p className="text-slate-700 italic">{selectedTreatment.clinicalNotes || 'None recorded.'}</p>
               </div>
 
               {selectedTreatment.medicines && selectedTreatment.medicines.length > 0 && (
                 <div className="space-y-2">
-                  <span className="font-bold text-white">Prescribed Medications:</span>
+                  <span className="font-bold text-slate-900">Prescribed Medications:</span>
                   <div className="space-y-2">
                     {selectedTreatment.medicines.map((m, idx) => (
-                      <div key={idx} className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-slate-300">
+                      <div key={idx} className="p-4 rounded-xl bg-white border border-secondary shadow-sm text-slate-700">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-brand-300">{m.medicationName} ({m.dosage})</span>
-                          <span className="font-mono text-[10px] text-slate-500">{m.durationDays} Days</span>
+                          <span className="font-bold text-primary">{m.medicationName} ({m.dosage})</span>
+                          <span className="font-bold text-xs text-slate-500">{m.durationDays} Days</span>
                         </div>
-                        <p className="text-[11px] text-slate-400 mt-1">{m.instructions}</p>
+                        <p className="text-sm text-slate-600 mt-1">{m.instructions}</p>
                       </div>
                     ))}
                   </div>
@@ -252,11 +252,11 @@ export const PatientTreatmentsPage: React.FC = () => {
               )}
             </div>
 
-            <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
+            <div className="pt-4 border-t border-secondary flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => setSelectedTreatment(null)}
-                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold"
+                className="px-5 py-2.5 rounded-xl bg-white border border-secondary hover:bg-secondary/20 text-slate-700 font-bold"
               >
                 Close
               </button>
@@ -268,9 +268,9 @@ export const PatientTreatmentsPage: React.FC = () => {
                   setSelectedTreatment(null);
                   handleFindPharmacyNearHospital(hosp);
                 }}
-                className="px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 text-slate-950 font-bold shadow-glow-cyan flex items-center space-x-1.5"
+                className="px-6 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold shadow-sm flex items-center space-x-2"
               >
-                <Pill className="w-4 h-4" />
+                <Pill className="w-5 h-5" />
                 <span>Find Nearby Pharmacy Around Hospital</span>
               </button>
             </div>

@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { AlertCircle, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
 
-// Premium registration page with glass-morphism and role selection
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const { registerPatient, registerDoctor, isLoading } = useAuthStore();
@@ -16,7 +15,6 @@ export const RegisterPage: React.FC = () => {
     phone: '',
     password: '',
     confirmPassword: '',
-    // doctor‑specific fields
     licenseNumber: '',
     specialization: '',
   });
@@ -25,6 +23,7 @@ export const RegisterPage: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    if (error) setError(null);
   };
 
   const validateForm = (): string | null => {
@@ -97,7 +96,6 @@ export const RegisterPage: React.FC = () => {
         );
       }
     } else {
-      // Admin registration — goes through patient register path with role override handled by Supabase metadata
       const result = await registerPatient({
         firstName: form.firstName,
         lastName: form.lastName,
@@ -122,45 +120,47 @@ export const RegisterPage: React.FC = () => {
     }
   };
 
-  // If already logged in, redirect home
   const { currentUser } = useAuthStore();
   if (currentUser) {
     navigate('/', { replace: true });
     return null;
   }
 
+  const inputClassName = "w-full px-4 py-2 bg-white text-slate-900 border border-secondary rounded-md placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors";
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 p-4">
-      <div className="w-full max-w-lg glass-card backdrop-blur-md bg-white/5 border border-white/10 rounded-2xl p-8 shadow-xl animate-in fade-in-90">
-        <h1 className="text-3xl font-bold text-center text-white mb-2">Nexa Health AI</h1>
-        <h2 className="text-xl text-center text-gray-300 mb-6">Create Your Account</h2>
-        {/* Role toggle */}
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-lg bg-white border border-secondary rounded-2xl p-8 shadow-sm">
+        <h1 className="text-3xl font-bold text-center text-slate-900 mb-2">Nexa Health AI</h1>
+        <h2 className="text-xl text-center text-slate-600 mb-6">Create Your Account</h2>
+        
         <div className="flex justify-center space-x-2 mb-4">
           {(['patient', 'doctor', 'admin'] as const).map((r) => (
             <button
               key={r}
               type="button"
               onClick={() => setRole(r)}
-              className={`px-4 py-1 rounded-full text-sm transition-colors duration-200 ${role === r ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}
+              className={`px-4 py-1.5 rounded-full text-sm font-bold transition-colors duration-200 ${
+                role === r ? 'bg-primary text-white shadow-sm' : 'bg-secondary/30 text-slate-600 hover:bg-secondary/50'
+              }`}
             >
               {r.charAt(0).toUpperCase() + r.slice(1)}
             </button>
           ))}
         </div>
         {role === 'admin' && (
-          <div className="mb-3 text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-md px-3 py-2 text-center">
+          <div className="mb-3 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 text-center font-bold">
             Admin accounts require Super Admin approval after registration.
           </div>
         )}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Basic fields */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-3">
             <input
               name="firstName"
               placeholder="First Name"
               value={form.firstName}
               onChange={handleChange}
-              className="glass-input w-full px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+              className={inputClassName}
               required
             />
             <input
@@ -168,7 +168,7 @@ export const RegisterPage: React.FC = () => {
               placeholder="Last Name"
               value={form.lastName}
               onChange={handleChange}
-              className="glass-input w-full px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+              className={inputClassName}
               required
             />
           </div>
@@ -178,7 +178,7 @@ export const RegisterPage: React.FC = () => {
             placeholder="Email"
             value={form.email}
             onChange={handleChange}
-            className="glass-input w-full px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+            className={inputClassName}
             required
           />
           <input
@@ -186,7 +186,7 @@ export const RegisterPage: React.FC = () => {
             placeholder="Phone (optional)"
             value={form.phone}
             onChange={handleChange}
-            className="glass-input w-full px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+            className={inputClassName}
           />
           {role === 'doctor' && (
             <>
@@ -195,7 +195,7 @@ export const RegisterPage: React.FC = () => {
                 placeholder="License / Doctor ID"
                 value={form.licenseNumber}
                 onChange={handleChange}
-                className="glass-input w-full px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                className={inputClassName}
                 required
               />
               <input
@@ -203,7 +203,7 @@ export const RegisterPage: React.FC = () => {
                 placeholder="Specialization"
                 value={form.specialization}
                 onChange={handleChange}
-                className="glass-input w-full px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                className={inputClassName}
               />
             </>
           )}
@@ -213,7 +213,7 @@ export const RegisterPage: React.FC = () => {
             placeholder="Password"
             value={form.password}
             onChange={handleChange}
-            className="glass-input w-full px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+            className={inputClassName}
             required
           />
           <input
@@ -222,17 +222,17 @@ export const RegisterPage: React.FC = () => {
             placeholder="Confirm Password"
             value={form.confirmPassword}
             onChange={handleChange}
-            className="glass-input w-full px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+            className={inputClassName}
             required
           />
           {error && (
-            <div className="flex items-center gap-2 text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-md px-3 py-2">
+            <div className="flex items-center gap-2 text-sm text-critical bg-critical/10 border border-critical/20 rounded-md px-3 py-2">
               <AlertCircle size={16} className="shrink-0" />
               <span>{error}</span>
             </div>
           )}
           {success && (
-            <div className="flex items-center gap-2 text-sm text-green-400 bg-green-400/10 border border-green-400/20 rounded-md px-3 py-2">
+            <div className="flex items-center gap-2 text-sm text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2">
               <CheckCircle2 size={16} className="shrink-0" />
               <span>{success}</span>
             </div>
@@ -240,14 +240,14 @@ export const RegisterPage: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-medium transition disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-md font-bold transition shadow-sm disabled:opacity-50 mt-2"
           >
             {isLoading ? <Loader2 className="animate-spin" size={20} /> : <ArrowRight size={20} />}
             <span>{isLoading ? 'Creating…' : 'Create Account'}</span>
           </button>
         </form>
-        <div className="mt-4 text-center text-sm text-gray-400">
-          <Link to="/login" className="hover:underline hover:text-gray-200 transition">Already have an account? Sign In</Link>
+        <div className="mt-6 text-center text-sm font-bold text-slate-500">
+          <Link to="/login" className="hover:text-primary transition-colors">Already have an account? Sign In</Link>
         </div>
       </div>
     </div>

@@ -11,7 +11,7 @@ export const AppLayout: React.FC = () => {
   const [agentTasksOpen, setAgentTasksOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#070A12] flex flex-col text-slate-100 selection:bg-brand-500 selection:text-slate-950">
+    <div className="min-h-screen bg-background flex flex-col text-slate-900 selection:bg-primary selection:text-white">
       <Navbar
         onOpenMedAI={() => setMedAIOpen(true)}
         onOpenAgentTasks={() => setAgentTasksOpen(true)}
@@ -20,7 +20,7 @@ export const AppLayout: React.FC = () => {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-[#090D18]/80">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-background">
           <div className="max-w-7xl mx-auto">
             <Outlet />
           </div>

@@ -6,13 +6,12 @@ import {
   Clock,
   ExternalLink,
   MapPin,
-  Navigation,
   Phone,
   Pill,
   Search,
   Send,
   Truck,
-  X,
+  AlertTriangle,
 } from 'lucide-react';
 import api from '../../services/api';
 import { Pharmacy, Hospital } from '../../types/shared';
@@ -38,65 +37,35 @@ export const PharmacyFinderPage: React.FC = () => {
   const [calculatingDistance, setCalculatingDistance] = useState(false);
   const [routedSuccess, setRoutedSuccess] = useState(false);
   
-  // Patient's current location (may be null if permission denied)
+  // Patient's current location from browser geolocation
   const [patientLocation, setPatientLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationError, setLocationError] = useState<string>('');
-  
-  // Google Maps load state
-  const [isGoogleLoaded, setIsGoogleLoaded] = useState(false);
-  const [mapAuthError, setMapAuthError] = useState(false);
 
-  // 1. Load Google Maps API Script
+  // 1. Request patient location via Geolocation API on mount
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if ((window as any).google && (window as any).google.maps) {
-      setIsGoogleLoaded(true);
-      return;
-    }
-    
-    // Check if script is already injecting
-    if (document.querySelector('script[src*="maps.googleapis.com"]')) {
-      const checkInterval = setInterval(() => {
-        if ((window as any).google && (window as any).google.maps) {
-          setIsGoogleLoaded(true);
-          clearInterval(checkInterval);
-        }
-      }, 100);
-      return () => clearInterval(checkInterval);
-    }
-
-    (window as any).gm_authFailure = () => {
-      setMapAuthError(true);
-    };
-
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`;
-    script.async = true;
-    script.onload = () => setIsGoogleLoaded(true);
-    script.onerror = () => setLocationError('Failed to load Google Maps API. Please check your connection or API key.');
-    document.head.appendChild(script);
-  }, []);
-
-  // 2. Request patient location on mount
-  useEffect(() => {
-    if (navigator.geolocation) {
+    if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          setPatientLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+          setPatientLocation({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          });
           setLocationError('');
         },
         (err) => {
-          console.warn('Geolocation permission denied or unavailable:', err);
-          setLocationError('Location permission is required to calculate your exact distance from nearby pharmacies.');
+          console.warn('Geolocation permission denied or error:', err);
+          setLocationError(
+            'Location access is required to compute real driving distance from your current position. Please enable location permissions in your browser settings.'
+          );
         },
-        { timeout: 10000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
       );
     } else {
-      setLocationError('Geolocation is not supported by this browser.');
+      setLocationError('Geolocation is not supported by your browser.');
     }
   }, []);
 
-  // 3. Fetch Hospitals & Pharmacies (Data only, no distance calculation)
+  // 2. Fetch Hospitals & Pharmacies (Raw data)
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -105,9 +74,9 @@ export const PharmacyFinderPage: React.FC = () => {
         setHospitals(hospRes.data);
 
         // Determine active hospital
-        let activeHosp = null;
+        let activeHosp: Hospital | null = null;
         if (hospitalIdParam) {
-          activeHosp = hospRes.data.find((h: Hospital) => h.id === hospitalIdParam);
+          activeHosp = hospRes.data.find((h: Hospital) => h.id === hospitalIdParam) || null;
         }
         if (!activeHosp && hospRes.data.length > 0) {
           activeHosp = hospRes.data[0];
@@ -129,9 +98,6 @@ export const PharmacyFinderPage: React.FC = () => {
         if (activeHosp) {
           queryParams.set('hospitalId', activeHosp.id);
         }
-        if (radiusKm > 0) {
-          queryParams.set('radiusKm', radiusKm.toString());
-        }
         
         const pharmRes = await api.get(`/pharmacies?${queryParams.toString()}`);
         setRawPharmacies(pharmRes.data);
@@ -143,96 +109,144 @@ export const PharmacyFinderPage: React.FC = () => {
     };
     
     fetchData();
-  }, [hospitalIdParam, latParam, lngParam, radiusKm, patientLocation]);
+  }, [hospitalIdParam, latParam, lngParam, patientLocation]);
 
-  // 4. Calculate real road distances using Google Distance Matrix API
+  // 3. Calculate REAL ROAD DISTANCE using openrouteservice Matrix API
   useEffect(() => {
     if (!rawPharmacies.length) {
       setPharmacies([]);
       return;
     }
 
-    const calculateDistances = async () => {
-      const originLat = patientLocation?.latitude ?? selectedHospital?.latitude;
-      const originLng = patientLocation?.longitude ?? selectedHospital?.longitude;
-
-      // If we don't have an origin or Google Maps isn't loaded yet, fallback to Haversine
-      if (!originLat || !originLng || !isGoogleLoaded || !(window as any).google?.maps?.DistanceMatrixService) {
-        if (originLat && originLng) {
-          const updated = rawPharmacies.map((p) => {
-            const d = Math.sqrt(
-              Math.pow((p.latitude - originLat) * 111.12, 2) +
-              Math.pow((p.longitude - originLng) * 111.12 * Math.cos((originLat * Math.PI) / 180), 2)
-            );
-            return { ...p, distanceKm: Math.round(d * 10) / 10 };
-          }).sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
-          setPharmacies(updated);
-          if (updated.length > 0 && !selectedPharmacy) setSelectedPharmacy(updated[0]);
-        } else {
-          setPharmacies(rawPharmacies);
-        }
-        return;
+    // Origin MUST be patient's current location if available
+    if (!patientLocation) {
+      // Patient location denied or not yet provided: do NOT substitute hospital location as patient location
+      const uncalculated = rawPharmacies.map((p) => ({
+        ...p,
+        distanceKm: undefined,
+      }));
+      setPharmacies(uncalculated);
+      if (uncalculated.length > 0 && !selectedPharmacy) {
+        setSelectedPharmacy(uncalculated[0]);
       }
+      return;
+    }
 
+    const calculateRoadDistances = async () => {
       setCalculatingDistance(true);
+      const apiKey = import.meta.env.VITE_OPENROUTESERVICE_API_KEY;
+
+      const origin = [patientLocation.longitude, patientLocation.latitude]; // ORS expects [lng, lat]
+      const destinations = rawPharmacies.map((p) => [p.longitude, p.latitude]);
+      const allLocations = [origin, ...destinations];
+      const destinationIndices = rawPharmacies.map((_, i) => i + 1);
+
       try {
-        const service = new google.maps.DistanceMatrixService();
-        const origin = new google.maps.LatLng(originLat, originLng);
-        const destinations = rawPharmacies.map(p => new google.maps.LatLng(p.latitude, p.longitude));
-
-        // Note: DistanceMatrix allows up to 25 destinations per request. 
-        // For production with >25 pharmacies, this needs to be chunked.
-        const response = await service.getDistanceMatrix({
-          origins: [origin],
-          destinations: destinations,
-          travelMode: google.maps.TravelMode.DRIVING,
-        });
-
-        if (response && response.rows && response.rows[0]) {
-          const results = response.rows[0].elements;
-          const updatedPharmacies = rawPharmacies.map((p, index) => {
-            const element = results[index];
-            if (element && element.status === 'OK' && element.distance) {
-              // Convert meters to km and round to 1 decimal
-              return { ...p, distanceKm: Math.round(element.distance.value / 100) / 10 };
-            } else {
-              // Fallback to straight line if route fails for this specific pharmacy
-              const d = Math.sqrt(
-                Math.pow((p.latitude - originLat) * 111.12, 2) +
-                Math.pow((p.longitude - originLng) * 111.12 * Math.cos((originLat * Math.PI) / 180), 2)
-              );
-              return { ...p, distanceKm: Math.round(d * 10) / 10 };
-            }
+        if (apiKey && apiKey.trim() !== '' && apiKey !== 'YOUR_OPENROUTESERVICE_API_KEY') {
+          const response = await fetch('https://api.openrouteservice.org/v2/matrix/driving-car', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: apiKey,
+            },
+            body: JSON.stringify({
+              locations: allLocations,
+              sources: [0],
+              destinations: destinationIndices,
+              metrics: ['distance'],
+            }),
           });
-          
-          updatedPharmacies.sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
-          setPharmacies(updatedPharmacies);
-          
-          // Select nearest if none selected
-          if (updatedPharmacies.length > 0 && !selectedPharmacy) {
-            setSelectedPharmacy(updatedPharmacies[0]);
+
+          if (!response.ok) {
+            throw new Error(`openrouteservice API returned HTTP ${response.status}`);
           }
-        } else {
-          throw new Error("Invalid or empty response from Distance Matrix API");
+
+          const data = await response.json();
+          if (data && data.distances && data.distances[0]) {
+            const distanceMatrix = data.distances[0]; // Array of meters
+
+            const updatedPharmacies: Pharmacy[] = rawPharmacies.map((p, idx) => {
+              const meters = distanceMatrix[idx];
+              let distKm: number | undefined = undefined;
+              if (typeof meters === 'number' && !isNaN(meters) && meters >= 0) {
+                distKm = Math.round((meters / 1000) * 10) / 10; // Convert to km, 1 decimal place (e.g. 2400m -> 2.4 km)
+              }
+              return {
+                ...p,
+                distanceKm: distKm,
+              };
+            });
+
+            // Sort: nearest -> farthest (undefined distances placed at end)
+            updatedPharmacies.sort((a, b) => {
+              if (a.distanceKm === undefined) return 1;
+              if (b.distanceKm === undefined) return -1;
+              return a.distanceKm - b.distanceKm;
+            });
+
+            setPharmacies(updatedPharmacies);
+            if (updatedPharmacies.length > 0 && !selectedPharmacy) {
+              setSelectedPharmacy(updatedPharmacies[0]);
+            }
+            return;
+          }
         }
-      } catch (error) {
-        console.error("Google Maps Distance Matrix failed:", error);
-        // Graceful fallback to Haversine
-        const updated = rawPharmacies.map((p) => {
-          const d = Math.sqrt(
-            Math.pow((p.latitude - originLat) * 111.12, 2) +
-            Math.pow((p.longitude - originLng) * 111.12 * Math.cos((originLat * Math.PI) / 180), 2)
-          );
-          return { ...p, distanceKm: Math.round(d * 10) / 10 };
-        }).sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
-        setPharmacies(updated);
+
+        // If no openrouteservice API key is configured or call fails, try OSRM (Open Source Routing Machine) public demo API as reliable free open road routing matrix
+        const coordinatesStr = `${patientLocation.longitude},${patientLocation.latitude};` + 
+          rawPharmacies.map(p => `${p.longitude},${p.latitude}`).join(';');
+        const destParamStr = destinationIndices.join(';');
+
+        const osrmRes = await fetch(
+          `https://router.project-osrm.org/table/v1/driving/${coordinatesStr}?sources=0&destinations=${destParamStr}&annotations=distance`
+        );
+
+        if (osrmRes.ok) {
+          const osrmData = await osrmRes.json();
+          if (osrmData && osrmData.distances && osrmData.distances[0]) {
+            const distancesInMeters = osrmData.distances[0];
+            const updatedPharmacies: Pharmacy[] = rawPharmacies.map((p, idx) => {
+              const meters = distancesInMeters[idx];
+              let distKm: number | undefined = undefined;
+              if (typeof meters === 'number' && !isNaN(meters) && meters >= 0) {
+                distKm = Math.round((meters / 1000) * 10) / 10;
+              }
+              return {
+                ...p,
+                distanceKm: distKm,
+              };
+            });
+
+            updatedPharmacies.sort((a, b) => {
+              if (a.distanceKm === undefined) return 1;
+              if (b.distanceKm === undefined) return -1;
+              return a.distanceKm - b.distanceKm;
+            });
+
+            setPharmacies(updatedPharmacies);
+            if (updatedPharmacies.length > 0 && !selectedPharmacy) {
+              setSelectedPharmacy(updatedPharmacies[0]);
+            }
+            return;
+          }
+        }
+
+        throw new Error('Routing service distance unavailable');
+      } catch (err) {
+        console.warn('Real road distance matrix failed:', err);
+        // If routing fails: show "Distance unavailable" (distanceKm: undefined). Do not remove pharmacy or use fake straight line distance.
+        const fallback = rawPharmacies.map((p) => ({
+          ...p,
+          distanceKm: undefined,
+        }));
+        setPharmacies(fallback);
       } finally {
         setCalculatingDistance(false);
       }
     };
 
-    calculateDistances();
-  }, [rawPharmacies, isGoogleLoaded, patientLocation, selectedHospital]);
+    calculateRoadDistances();
+  }, [rawPharmacies, patientLocation]);
 
   const handleHospitalChange = async (hospId: string) => {
     const found = hospitals.find((h) => h.id === hospId);
@@ -250,7 +264,6 @@ export const PharmacyFinderPage: React.FC = () => {
         queryParams.set('lng', found.longitude.toString());
       }
       queryParams.set('hospitalId', found.id);
-      if (radiusKm > 0) queryParams.set('radiusKm', radiusKm.toString());
 
       const res = await api.get(`/pharmacies?${queryParams.toString()}`);
       setRawPharmacies(res.data);
@@ -266,13 +279,12 @@ export const PharmacyFinderPage: React.FC = () => {
     setTimeout(() => setRoutedSuccess(false), 4000);
   };
 
+  // Build driving directions URL (Patient Location -> Pharmacy)
   const getDirectionsUrl = (pharmacy: Pharmacy) => {
-    const origin = patientLocation
-      ? `${patientLocation.latitude},${patientLocation.longitude}`
-      : selectedHospital
-      ? `${selectedHospital.latitude},${selectedHospital.longitude}`
-      : '';
-    return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${pharmacy.latitude},${pharmacy.longitude}`;
+    if (patientLocation) {
+      return `https://www.google.com/maps/dir/?api=1&origin=${patientLocation.latitude},${patientLocation.longitude}&destination=${pharmacy.latitude},${pharmacy.longitude}`;
+    }
+    return `https://www.google.com/maps/dir/?api=1&destination=${pharmacy.latitude},${pharmacy.longitude}`;
   };
 
   const filteredPharmacies = pharmacies.filter((p) => {
@@ -283,7 +295,7 @@ export const PharmacyFinderPage: React.FC = () => {
 
     const matches24H = !open24HoursFilter || p.isOpen24Hours;
     
-    // Apply exact road distance filter (since API might return pharmacies outside radius based on straight line)
+    // Apply exact real road distance filter
     const matchesRadius = radiusKm === 0 || (p.distanceKm !== undefined && p.distanceKm <= radiusKm);
     
     return matchesSearch && matches24H && matchesRadius;
@@ -295,53 +307,60 @@ export const PharmacyFinderPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <h1 className="text-2xl font-bold text-white tracking-tight">Nearby Partner Pharmacies</h1>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Nearby Partner Pharmacies</h1>
             {patientLocation ? (
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono">
-                Your Current Location
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200 font-mono font-bold">
+                Live Patient GPS
               </span>
             ) : (
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
-                Hospital Anchor Geolocation
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 font-mono font-bold">
+                Location Required
               </span>
             )}
           </div>
-          <p className="text-xs text-slate-400">
-            Real-time pharmacy network sorted by real road distance from {patientLocation ? 'your current location' : 'the consultation hospital'}
+          <p className="text-xs text-slate-600 mt-1">
+            Real-time pharmacy network sorted by actual road driving distance from {patientLocation ? 'your current GPS location' : 'your position'}
           </p>
         </div>
       </div>
 
+      {/* Geolocation Permission Warning / Alert */}
       {locationError && (
-        <p className="text-sm text-amber-400 mb-2">{locationError}</p>
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start space-x-3 text-amber-800 text-sm">
+          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-bold">Location Permission Needed</p>
+            <p className="text-xs text-amber-700 leading-relaxed">{locationError}</p>
+          </div>
+        </div>
       )}
 
-      {/* Hospital Anchor Context Banner */}
+      {/* Consultation Hospital Context Banner */}
       {selectedHospital && (
-        <div className="p-4 rounded-2xl glass-card border border-brand-500/30 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-brand-950/20">
+        <div className="p-4 rounded-2xl bg-white border border-secondary shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center font-bold">
               <Building2 className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="text-[10px] uppercase font-bold text-rose-400 font-mono">
+                <span className="text-[10px] uppercase font-bold text-rose-600 font-mono">
                   Consultation Hospital Anchor:
                 </span>
-                <span className="font-bold text-sm text-white">{selectedHospital.name}</span>
+                <span className="font-bold text-sm text-slate-900">{selectedHospital.name}</span>
               </div>
-              <p className="text-xs text-slate-300 mt-0.5">
-                📍 {selectedHospital.address}, {selectedHospital.city} • (Lat: {selectedHospital.latitude}° N, Lng: {selectedHospital.longitude}° W)
+              <p className="text-xs text-slate-600 mt-0.5">
+                📍 {selectedHospital.address}, {selectedHospital.city}
               </p>
             </div>
           </div>
 
           <div className="flex items-center space-x-2">
-            <span className="text-xs text-slate-400 hidden sm:inline">Change Hospital:</span>
+            <span className="text-xs text-slate-500 hidden sm:inline">Change Hospital:</span>
             <select
               value={selectedHospital.id}
               onChange={(e) => handleHospitalChange(e.target.value)}
-              className="px-3 py-1.5 rounded-xl glass-input text-xs text-white bg-slate-900 border border-slate-700 focus:outline-none"
+              className="px-3 py-1.5 rounded-xl text-xs text-slate-900 bg-white border border-secondary focus:outline-none focus:border-primary"
             >
               {hospitals.map((h) => (
                 <option key={h.id} value={h.id}>
@@ -354,7 +373,7 @@ export const PharmacyFinderPage: React.FC = () => {
       )}
 
       {/* Filters & Radius Controls */}
-      <div className="p-4 rounded-2xl glass-card border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-3">
+      <div className="p-4 rounded-2xl bg-white border border-secondary shadow-sm flex flex-col md:flex-row items-center justify-between gap-3">
         <div className="relative flex-1 w-full">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -362,22 +381,22 @@ export const PharmacyFinderPage: React.FC = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by pharmacy name, address, or neighborhood..."
-            className="w-full pl-9 pr-4 py-2 text-xs rounded-xl glass-input text-white placeholder:text-slate-500 focus:outline-none"
+            className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-secondary bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-primary"
           />
         </div>
 
         <div className="flex items-center space-x-3 w-full md:w-auto">
           {/* Radius Selector */}
           <div className="flex items-center space-x-1 text-xs">
-            <span className="text-slate-400 text-[11px] mr-1">Distance:</span>
+            <span className="text-slate-600 text-[11px] font-bold mr-1">Road Distance:</span>
             {[1, 3, 5, 0].map((r) => (
               <button
                 key={r}
                 onClick={() => setRadiusKm(r)}
                 className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
                   radiusKm === r
-                    ? 'bg-brand-500 text-slate-950 shadow-glow-cyan'
-                    : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'bg-secondary/20 text-slate-700 hover:bg-secondary/40 border border-secondary'
                 }`}
               >
                 {r === 0 ? 'All' : `${r} km`}
@@ -385,42 +404,44 @@ export const PharmacyFinderPage: React.FC = () => {
             ))}
           </div>
 
-          <label className="flex items-center space-x-1.5 text-xs text-slate-300 cursor-pointer">
+          <label className="flex items-center space-x-1.5 text-xs text-slate-700 cursor-pointer font-medium">
             <input
               type="checkbox"
               checked={open24HoursFilter}
               onChange={(e) => setOpen24HoursFilter(e.target.checked)}
-              className="rounded accent-brand-500"
+              className="rounded accent-primary"
             />
             <span>Open 24/7</span>
           </label>
         </div>
       </div>
 
-      {/* Main Grid: Interactive Map (Top/Right) + Pharmacy List (Left) */}
+      {/* Main Grid: Interactive Map + Pharmacy List */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Pharmacy Directory List (5 cols) */}
         <div className="lg:col-span-5 space-y-3">
-          <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-            <span>Showing {filteredPharmacies.length} pharmacies sorted by nearest distance</span>
+          <div className="flex items-center justify-between text-xs text-slate-600 px-1 font-medium">
+            <span>Showing {filteredPharmacies.length} pharmacies (nearest first)</span>
             {calculatingDistance ? (
-              <span className="font-mono text-cyan-400 animate-pulse">Calculating...</span>
+              <span className="font-mono text-primary animate-pulse font-bold">Calculating Road Distance...</span>
             ) : patientLocation ? (
-              <span className="font-mono text-cyan-400">from Your Location</span>
-            ) : selectedHospital ? (
-              <span className="font-mono text-cyan-400">from {selectedHospital.name.split(' ')[0]}</span>
-            ) : null}
+              <span className="font-mono text-primary font-bold">From Your GPS Location</span>
+            ) : (
+              <span className="font-mono text-amber-600">Location Pending</span>
+            )}
           </div>
 
           {loading || calculatingDistance ? (
-            <div className="p-8 text-center glass-card rounded-2xl border border-slate-800 flex flex-col items-center justify-center space-y-3">
-               <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
-               <p className="text-sm text-slate-400">{calculatingDistance ? 'Calculating real road distances...' : 'Loading pharmacies...'}</p>
+            <div className="p-8 text-center bg-white rounded-2xl border border-secondary shadow-sm flex flex-col items-center justify-center space-y-3">
+              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-sm text-slate-600 font-medium">
+                {calculatingDistance ? 'Computing real road distance matrix via openrouteservice...' : 'Loading pharmacies...'}
+              </p>
             </div>
           ) : filteredPharmacies.length === 0 ? (
-            <div className="p-8 text-center glass-card rounded-2xl border border-slate-800 flex flex-col items-center justify-center space-y-3">
-               <MapPin className="w-8 h-8 text-slate-600" />
-               <p className="text-sm text-slate-400">No pharmacies found within criteria.</p>
+            <div className="p-8 text-center bg-white rounded-2xl border border-secondary shadow-sm flex flex-col items-center justify-center space-y-3">
+              <MapPin className="w-8 h-8 text-slate-400" />
+              <p className="text-sm text-slate-600">No pharmacies found matching the filter criteria.</p>
             </div>
           ) : (
             filteredPharmacies.map((pharmacy) => {
@@ -429,40 +450,40 @@ export const PharmacyFinderPage: React.FC = () => {
                 <div
                   key={pharmacy.id}
                   onClick={() => setSelectedPharmacy(pharmacy)}
-                  className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                  className={`p-4 rounded-2xl border cursor-pointer transition-all shadow-sm ${
                     isSelected
-                      ? 'bg-brand-500/20 border-brand-500/60 shadow-glow-cyan'
-                      : 'glass-card border-slate-800 hover:border-slate-700'
+                      ? 'bg-primary/10 border-primary ring-1 ring-primary'
+                      : 'bg-white border-secondary hover:border-slate-400'
                   }`}
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h3 className="font-bold text-sm text-white">{pharmacy.name}</h3>
-                      <p className="text-xs text-slate-400 flex items-center mt-1">
-                        <MapPin className="w-3.5 h-3.5 text-brand-400 mr-1 flex-shrink-0" />
+                      <h3 className="font-bold text-sm text-slate-900">{pharmacy.name}</h3>
+                      <p className="text-xs text-slate-600 flex items-center mt-1">
+                        <MapPin className="w-3.5 h-3.5 text-primary mr-1 flex-shrink-0" />
                         {pharmacy.address}, {pharmacy.city}
                       </p>
                     </div>
 
-                    <span className="text-xs font-mono font-bold text-cyan-400 px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-800 whitespace-nowrap">
-                      📍 {pharmacy.distanceKm !== undefined ? `${pharmacy.distanceKm} km` : '...'}
+                    <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-xl bg-secondary/30 text-slate-800 border border-secondary whitespace-nowrap">
+                      {pharmacy.distanceKm !== undefined ? `📍 ${pharmacy.distanceKm} km` : 'Distance unavailable'}
                     </span>
                   </div>
 
                   <div className="flex items-center space-x-2 pt-3 text-[10px]">
                     {pharmacy.isOpen24Hours ? (
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold flex items-center space-x-1">
+                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold flex items-center space-x-1">
                         <Clock className="w-3 h-3" />
                         <span>Open 24/7</span>
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-semibold">
+                      <span className="px-2 py-0.5 rounded bg-secondary/30 text-slate-700 font-semibold">
                         {pharmacy.openingHours || '08:00 AM - 09:00 PM'}
                       </span>
                     )}
 
                     {pharmacy.deliveryAvailable && (
-                      <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-semibold flex items-center space-x-1">
+                      <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-700 font-bold flex items-center space-x-1">
                         <Truck className="w-3 h-3" />
                         <span>Delivery</span>
                       </span>
@@ -473,7 +494,7 @@ export const PharmacyFinderPage: React.FC = () => {
                       target="_blank"
                       rel="noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="ml-auto text-brand-400 hover:text-brand-300 font-bold flex items-center space-x-1 hover:underline"
+                      className="ml-auto text-primary hover:text-primary/80 font-bold flex items-center space-x-1 hover:underline text-xs"
                     >
                       <span>Get Directions</span>
                       <ExternalLink className="w-3 h-3" />
@@ -485,11 +506,9 @@ export const PharmacyFinderPage: React.FC = () => {
           )}
         </div>
 
-        {/* Right: Interactive Map + Dispensing Station Action (7 cols) */}
+        {/* Right: OpenStreetMap Interactive Map + Selected Pharmacy Panel (7 cols) */}
         <div className="lg:col-span-7 space-y-4">
           <InteractiveMap
-            isGoogleLoaded={isGoogleLoaded}
-            mapAuthError={mapAuthError}
             hospital={selectedHospital}
             patientLocation={patientLocation}
             pharmacies={filteredPharmacies}
@@ -501,18 +520,21 @@ export const PharmacyFinderPage: React.FC = () => {
           />
 
           {selectedPharmacy && (
-            <div className="p-6 rounded-3xl glass-card border border-slate-800 space-y-4 shadow-2xl">
+            <div className="p-6 rounded-3xl bg-white border border-secondary space-y-4 shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                 <div>
-                  <span className="text-xs font-mono text-cyan-400 font-bold uppercase tracking-wider">
+                  <span className="text-xs font-mono text-primary font-bold uppercase tracking-wider">
                     Selected Dispensing Facility
                   </span>
-                  <h3 className="text-lg font-bold text-white mt-1">{selectedPharmacy.name}</h3>
-                  <p className="text-xs text-slate-300">
+                  <h3 className="text-lg font-bold text-slate-900 mt-1">{selectedPharmacy.name}</h3>
+                  <p className="text-xs text-slate-600">
                     📍 {selectedPharmacy.address}, {selectedPharmacy.city}
                   </p>
-                  <p className="text-xs text-emerald-400 font-mono mt-1 font-bold">
-                    Distance: {selectedPharmacy.distanceKm || '...'} km from {patientLocation ? 'your location' : (selectedHospital?.name || 'Hospital')}
+                  <p className="text-xs text-slate-800 font-mono mt-1 font-bold">
+                    Road Distance:{' '}
+                    {selectedPharmacy.distanceKm !== undefined
+                      ? `${selectedPharmacy.distanceKm} km from your GPS location`
+                      : 'Distance unavailable'}
                   </p>
                 </div>
 
@@ -521,7 +543,7 @@ export const PharmacyFinderPage: React.FC = () => {
                     href={getDirectionsUrl(selectedPharmacy)}
                     target="_blank"
                     rel="noreferrer"
-                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center space-x-1.5 transition-colors"
+                    className="px-4 py-2 rounded-xl bg-white border border-secondary hover:bg-secondary/20 text-slate-800 font-bold text-xs flex items-center space-x-1.5 transition-colors shadow-sm"
                   >
                     <ExternalLink className="w-4 h-4" />
                     <span>Get Directions</span>
@@ -529,7 +551,7 @@ export const PharmacyFinderPage: React.FC = () => {
 
                   <button
                     onClick={handleRoutePrescription}
-                    className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-brand-500 to-teal-500 hover:from-brand-400 hover:to-teal-400 text-slate-950 font-bold text-xs shadow-glow-cyan transition-all"
+                    className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs shadow-sm transition-all"
                   >
                     <Send className="w-4 h-4" />
                     <span>Route Active Prescription</span>
@@ -538,8 +560,8 @@ export const PharmacyFinderPage: React.FC = () => {
               </div>
 
               {routedSuccess && (
-                <div className="p-3.5 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-xs flex items-center space-x-2 animate-in zoom-in-95">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center space-x-2 animate-in zoom-in-95">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                   <span>
                     Successfully transmitted patient e-prescription to <strong>{selectedPharmacy.name}</strong> over secure HL7/FHIR pharmacy network.
                   </span>
@@ -547,21 +569,21 @@ export const PharmacyFinderPage: React.FC = () => {
               )}
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs pt-1">
-                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-0.5">
-                  <span className="text-[10px] text-slate-500 uppercase">Operating Hours</span>
-                  <p className="font-bold text-white">
+                <div className="p-3 rounded-xl bg-secondary/10 border border-secondary space-y-0.5">
+                  <span className="text-[10px] text-slate-500 uppercase font-bold">Operating Hours</span>
+                  <p className="font-bold text-slate-900">
                     {selectedPharmacy.isOpen24Hours ? 'Open 24/7' : selectedPharmacy.openingHours || '08:00 AM - 09:00 PM'}
                   </p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-0.5">
-                  <span className="text-[10px] text-slate-500 uppercase">Contact Phone</span>
-                  <p className="font-bold text-white font-mono">{selectedPharmacy.phone}</p>
+                <div className="p-3 rounded-xl bg-secondary/10 border border-secondary space-y-0.5">
+                  <span className="text-[10px] text-slate-500 uppercase font-bold">Contact Phone</span>
+                  <p className="font-bold text-slate-900 font-mono">{selectedPharmacy.phone}</p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-0.5 col-span-2 sm:col-span-1">
-                  <span className="text-[10px] text-slate-500 uppercase">Direct Email</span>
-                  <p className="font-bold text-brand-300 font-mono truncate">{selectedPharmacy.email}</p>
+                <div className="p-3 rounded-xl bg-secondary/10 border border-secondary space-y-0.5 col-span-2 sm:col-span-1">
+                  <span className="text-[10px] text-slate-500 uppercase font-bold">Direct Email</span>
+                  <p className="font-bold text-primary font-mono truncate">{selectedPharmacy.email}</p>
                 </div>
               </div>
             </div>
@@ -571,3 +593,4 @@ export const PharmacyFinderPage: React.FC = () => {
     </div>
   );
 };
+

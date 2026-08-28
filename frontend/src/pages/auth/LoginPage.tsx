@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { AlertCircle, Loader2, ArrowRight, UserPlus } from 'lucide-react';
 
-// Premium UI with glassmorphism, gradient background, microâ€‘animations
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login, loginWithGoogle, isLoading, currentUser } = useAuthStore();
@@ -12,6 +11,16 @@ export const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'patient' | 'doctor' | 'admin'>('patient');
   const [error, setError] = useState<string | null>(null);
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmailOrDoctorId(e.target.value);
+    if (error) setError(null);
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value);
+    if (error) setError(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,27 +51,32 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  // If already logged in, redirect to home
   if (currentUser) {
     navigate('/', { replace: true });
     return null;
   }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 p-4">
-      <div className="w-full max-w-md glass-card backdrop-blur-md bg-white/5 border border-white/10 rounded-2xl p-8 shadow-xl animate-in fade-in-90">
-        <h1 className="text-3xl font-bold text-center text-white mb-2">Nexa Health AI</h1>
-        <h2 className="text-xl text-center text-gray-300 mb-6">Welcome Back</h2>
-        <p className="text-center text-gray-400 mb-4">Sign in to your account</p>
+  const inputClassName = "w-full px-4 py-2 bg-white text-slate-900 border border-secondary rounded-md placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors";
 
-        {/* Role selection toggle */}
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-md bg-white border border-secondary rounded-2xl p-8 shadow-sm">
+        <h1 className="text-3xl font-bold text-center text-slate-900 mb-2">Nexa Health AI</h1>
+        <h2 className="text-xl text-center text-slate-600 mb-6">Welcome Back</h2>
+        <p className="text-center text-slate-500 mb-4 font-semibold">Sign in to your account</p>
+
         <div className="flex justify-center space-x-2 mb-4">
           {['patient', 'doctor', 'admin'].map((r) => (
             <button
               key={r}
               type="button"
-              onClick={() => setRole(r as any)}
-              className={`px-4 py-1 rounded-full text-sm transition-colors duration-200 ${role === r ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-300'} `}
+              onClick={() => {
+                setRole(r as any);
+                if (error) setError(null);
+              }}
+              className={`px-4 py-1.5 rounded-full text-sm font-bold transition-colors duration-200 ${
+                role === r ? 'bg-primary text-white shadow-sm' : 'bg-secondary/30 text-slate-600 hover:bg-secondary/50'
+              }`}
             >
               {r.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
             </button>
@@ -74,8 +88,8 @@ export const LoginPage: React.FC = () => {
             type="text"
             placeholder={role === 'doctor' ? 'Email or Doctor ID / License' : 'Email Address'}
             value={emailOrDoctorId}
-            onChange={(e) => setEmailOrDoctorId(e.target.value)}
-            className="w-full px-4 py-2 bg-gray-800 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+            onChange={handleEmailChange}
+            className={inputClassName}
             required
             autoComplete="email"
           />
@@ -83,13 +97,13 @@ export const LoginPage: React.FC = () => {
             type="password"
             placeholder="Password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-2 bg-gray-800 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+            onChange={handlePasswordChange}
+            className={inputClassName}
             required
             autoComplete="current-password"
           />
           {error && (
-            <div className="flex items-center text-sm text-red-400 space-x-1 bg-red-400/10 rounded-md px-3 py-2">
+            <div className="flex items-center text-sm text-critical space-x-1 bg-critical/10 border border-critical/20 rounded-md px-3 py-2">
               <AlertCircle size={16} className="shrink-0" />
               <span>{error}</span>
             </div>
@@ -97,24 +111,22 @@ export const LoginPage: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-medium transition disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-md font-bold transition shadow-sm disabled:opacity-50 mt-2"
           >
             {isLoading ? <Loader2 className="animate-spin" size={20} /> : <ArrowRight size={20} />}
-            <span>{isLoading ? 'Signing Inâ€¦' : 'Sign In'}</span>
+            <span>{isLoading ? 'Signing In…' : 'Sign In'}</span>
           </button>
         </form>
 
-        {/* Google Login Divider */}
-        <div className="my-6 flex items-center before:mt-0.5 before:flex-1 before:border-t before:border-white/10 after:mt-0.5 after:flex-1 after:border-t after:border-white/10">
-          <p className="mx-4 mb-0 text-center font-semibold text-gray-400 text-sm">OR</p>
+        <div className="my-6 flex items-center before:mt-0.5 before:flex-1 before:border-t before:border-secondary after:mt-0.5 after:flex-1 after:border-t after:border-secondary">
+          <p className="mx-4 mb-0 text-center font-bold text-slate-400 text-sm">OR</p>
         </div>
 
-        {/* Google Login Button */}
         <button
           type="button"
           onClick={handleGoogleLogin}
           disabled={isLoading}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/20 text-white rounded-md font-medium transition disabled:opacity-50 mb-4"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white hover:bg-secondary/20 border border-secondary text-slate-700 rounded-md font-bold transition shadow-sm disabled:opacity-50 mb-4"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
@@ -137,19 +149,53 @@ export const LoginPage: React.FC = () => {
           Continue with Google
         </button>
 
-        {/* Register link */}
-        <div className="mt-3">
+        <div className="mt-4">
           <Link
             to="/register"
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-transparent border border-indigo-500/50 hover:border-indigo-400 hover:bg-indigo-600/10 text-indigo-300 hover:text-indigo-200 rounded-md font-medium transition"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary/10 border border-primary/20 hover:border-primary/50 hover:bg-primary/20 text-primary rounded-md font-bold transition shadow-sm"
           >
             <UserPlus size={18} />
             <span>Create Account / Register</span>
           </Link>
         </div>
 
-        <div className="mt-3 text-center text-sm text-gray-400">
-          <Link to="/forgot-password" className="hover:underline hover:text-gray-200 transition">
+        {/* Quick Demo Login Fill Buttons */}
+        <div className="mt-6 pt-4 border-t border-secondary">
+          <p className="text-center text-xs font-bold text-slate-500 mb-2">Quick Sign-In Access</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={async () => {
+                setError(null);
+                setRole('doctor');
+                setEmailOrDoctorId('dr.chen@nexahealth.ai');
+                setPassword('password123');
+                const res = await login({ emailOrDoctorId: 'dr.chen@nexahealth.ai', password: 'password123', role: 'doctor' });
+                if (res.success) navigate('/', { replace: true });
+              }}
+              className="py-1.5 px-2 text-xs font-bold bg-secondary/20 hover:bg-secondary/40 border border-secondary text-slate-800 rounded-lg transition-colors"
+            >
+              👩‍⚕️ Doctor Sign-In
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                setError(null);
+                setRole('patient');
+                setEmailOrDoctorId('emily.davis@patient.nexa.ai');
+                setPassword('password123');
+                const res = await login({ emailOrDoctorId: 'emily.davis@patient.nexa.ai', password: 'password123', role: 'patient' });
+                if (res.success) navigate('/', { replace: true });
+              }}
+              className="py-1.5 px-2 text-xs font-bold bg-secondary/20 hover:bg-secondary/40 border border-secondary text-slate-800 rounded-lg transition-colors"
+            >
+              🏥 Patient Sign-In
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 text-center text-xs font-bold text-slate-500">
+          <Link to="/forgot-password" className="hover:text-primary transition-colors">
             Forgot password?
           </Link>
         </div>

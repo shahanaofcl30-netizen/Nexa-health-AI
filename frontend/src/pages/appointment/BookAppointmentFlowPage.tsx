@@ -291,62 +291,59 @@ export const BookAppointmentFlowPage: React.FC = () => {
   // If Confirmed, render the Confirmation Screen
   if (confirmedAppointment) {
     return (
-      <div className="max-w-2xl mx-auto py-8 space-y-6 animate-in zoom-in-95 duration-200">
-        <div className="p-8 rounded-3xl glass-card border border-emerald-500/40 text-center space-y-6 shadow-2xl">
-          <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 border-2 border-emerald-500 mx-auto flex items-center justify-center animate-bounce">
+      <div className="max-w-2xl mx-auto py-8 space-y-6">
+        <div className="p-8 rounded-3xl bg-white border border-secondary text-center space-y-6 shadow-sm">
+          <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 mx-auto flex items-center justify-center">
             <CheckCircle2 className="w-8 h-8" />
           </div>
 
           <div className="space-y-1">
-            <span className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider">
-              Booking Successful
-            </span>
-            <h2 className="text-2xl font-extrabold text-white">Appointment Confirmed</h2>
-            <p className="text-xs text-slate-300">
-              Your consultation has been registered on the hospital schedule and synchronized with the attending specialist.
+            <h2 className="text-2xl font-bold text-slate-900">Appointment Confirmed</h2>
+            <p className="text-sm text-slate-600">
+              Your consultation has been booked successfully.
             </p>
           </div>
 
           {/* Details Card */}
-          <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 text-left text-xs space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <span className="text-slate-400">Appointment ID:</span>
-              <span className="font-mono font-bold text-brand-300">{confirmedAppointment.id}</span>
+          <div className="p-5 rounded-2xl bg-secondary/10 border border-secondary text-left text-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-secondary pb-2">
+              <span className="text-slate-600">Appointment ID:</span>
+              <span className="font-mono font-bold text-primary">{confirmedAppointment.id}</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <span className="text-[10px] text-slate-500 uppercase">Patient Name</span>
-                <p className="font-bold text-white">
+                <span className="text-xs text-slate-500 uppercase">Patient Name</span>
+                <p className="font-bold text-slate-900">
                   {selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : (newPatientName || 'Patient')}
                 </p>
               </div>
 
               <div>
-                <span className="text-[10px] text-slate-500 uppercase">Hospital / Clinic</span>
-                <p className="font-bold text-brand-400">
+                <span className="text-xs text-slate-500 uppercase">Hospital / Clinic</span>
+                <p className="font-bold text-slate-900">
                   {selectedHospital?.name || 'Apollo Hospital & Medical Center'}
                 </p>
               </div>
 
               <div>
-                <span className="text-[10px] text-slate-500 uppercase">Attending Doctor</span>
-                <p className="font-bold text-white">
+                <span className="text-xs text-slate-500 uppercase">Attending Doctor</span>
+                <p className="font-bold text-slate-900">
                   Dr. {selectedDoctor?.user?.firstName} {selectedDoctor?.user?.lastName} ({selectedDoctor?.specialization})
                 </p>
               </div>
 
               <div>
-                <span className="text-[10px] text-slate-500 uppercase">Date & Time</span>
-                <p className="font-bold text-white font-mono">
+                <span className="text-xs text-slate-500 uppercase">Date & Time</span>
+                <p className="font-bold text-slate-900 font-mono">
                   {new Date(confirmedAppointment.dateTime).toLocaleDateString()} at {appointmentTime}
                 </p>
               </div>
             </div>
 
-            <div className="border-t border-slate-800 pt-2 flex items-center justify-between">
-              <span className="text-slate-400">Appointment Status:</span>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono font-bold uppercase text-[10px]">
+            <div className="border-t border-secondary pt-2 flex items-center justify-between">
+              <span className="text-slate-600">Appointment Status:</span>
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 font-bold uppercase text-xs">
                 {confirmedAppointment.status}
               </span>
             </div>
@@ -356,7 +353,7 @@ export const BookAppointmentFlowPage: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <button
               onClick={() => navigate('/appointments')}
-              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition-colors"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-white border border-secondary hover:bg-secondary/20 text-slate-700 font-bold text-sm transition-colors"
             >
               View My Appointments
             </button>
@@ -365,7 +362,7 @@ export const BookAppointmentFlowPage: React.FC = () => {
               onClick={() => {
                 setConfirmedAppointment(null);
               }}
-              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs shadow-glow-cyan transition-all"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-sm shadow-sm transition-all"
             >
               Book Another Appointment
             </button>
@@ -376,27 +373,24 @@ export const BookAppointmentFlowPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-200">
+    <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div>
         <div className="flex items-center space-x-2">
-          <h1 className="text-2xl font-bold text-white tracking-tight">Schedule Clinical Encounter</h1>
-          <span className="text-xs px-2.5 py-0.5 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20 font-mono">
-            Hospital → Doctor Flow
-          </span>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Book Appointment</h1>
         </div>
-        <p className="text-xs text-slate-400">
-          Select target hospital, choose attending specialist, pick appointment time, and confirm your encounter
+        <p className="text-sm text-slate-600">
+          Select target hospital, choose attending specialist, and pick an appointment time.
         </p>
       </div>
 
-      <form onSubmit={handleConfirmBooking} className="p-6 rounded-3xl glass-card border border-slate-800 space-y-6">
+      <form onSubmit={handleConfirmBooking} className="p-6 rounded-3xl bg-white border border-secondary shadow-sm space-y-6">
         {/* Step 1: Hospital Selection */}
         <div className="space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <label className="text-xs font-bold text-brand-400 uppercase tracking-wider flex items-center">
+            <label className="text-sm font-bold text-primary flex items-center">
               <Building2 className="w-4 h-4 mr-1.5" />
-              1. Select Healthcare Institution / Hospital (Tamil Nadu)
+              1. Select Hospital
             </label>
           </div>
 
@@ -409,25 +403,17 @@ export const BookAppointmentFlowPage: React.FC = () => {
                   onClick={() => setSelectedHospitalId(hosp.id)}
                   className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
                     isSelected
-                      ? 'bg-brand-500/20 border-brand-500 text-white shadow-glow-cyan'
-                      : 'bg-slate-900/70 border-slate-800 text-slate-300 hover:border-slate-700'
+                      ? 'bg-primary/10 border-primary text-slate-900 shadow-sm'
+                      : 'bg-white border-secondary text-slate-700 hover:border-slate-300'
                   }`}
                 >
                   <div className="flex items-start justify-between">
-                    <h4 className="font-bold text-xs leading-tight">{hosp.name}</h4>
-                    {hosp.district && (
-                      <span className="text-[9px] font-mono text-cyan-400 font-bold px-1.5 py-0.2 rounded bg-slate-950 border border-slate-800 ml-1">
-                        {hosp.district}
-                      </span>
-                    )}
+                    <h4 className="font-bold text-sm leading-tight">{hosp.name}</h4>
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-1 flex items-center">
-                    <MapPin className="w-3 h-3 text-brand-400 mr-1 flex-shrink-0" />
+                  <p className="text-xs text-slate-500 mt-1 flex items-center">
+                    <MapPin className="w-3 h-3 text-primary mr-1 flex-shrink-0" />
                     {hosp.city}, {hosp.district}
                   </p>
-                  <span className="text-[10px] text-slate-500 block mt-1.5 font-mono truncate">
-                    {hosp.hospitalType || 'Multi-Speciality'}
-                  </span>
                 </div>
               );
             })}
@@ -436,13 +422,13 @@ export const BookAppointmentFlowPage: React.FC = () => {
 
         {/* Step 2: Doctor Selection */}
         <div className="space-y-3">
-          <label className="block text-xs font-bold text-brand-400 uppercase tracking-wider flex items-center">
+          <label className="block text-sm font-bold text-primary flex items-center">
             <Stethoscope className="w-4 h-4 mr-1.5" />
-            2. Select Attending Doctor / Specialist
+            2. Select Doctor
           </label>
 
           {filteredDoctors.length === 0 ? (
-            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 text-xs text-slate-400">
+            <div className="p-4 rounded-2xl bg-secondary/10 border border-secondary text-sm text-slate-600">
               No doctors currently listed for this hospital. Please select another hospital above.
             </div>
           ) : (
@@ -456,11 +442,11 @@ export const BookAppointmentFlowPage: React.FC = () => {
                     onClick={() => setSelectedDoctorId(doc.id)}
                     className={`p-4 rounded-2xl border cursor-pointer flex items-center space-x-3 transition-all ${
                       isSelected
-                        ? 'bg-brand-500/20 border-brand-500 text-white shadow-glow-cyan'
-                        : 'bg-slate-900/70 border-slate-800 text-slate-300 hover:border-slate-700'
+                        ? 'bg-primary/10 border-primary text-slate-900 shadow-sm'
+                        : 'bg-white border-secondary text-slate-700 hover:border-slate-300'
                     }`}
                   >
-                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex-shrink-0">
+                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-secondary border border-secondary flex-shrink-0">
                       <img
                         src={doc.avatarUrl || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=200&q=80'}
                         alt={docUser ? docUser.firstName : 'Doctor'}
@@ -469,13 +455,13 @@ export const BookAppointmentFlowPage: React.FC = () => {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-xs truncate">
+                      <h4 className="font-bold text-sm truncate">
                         Dr. {docUser ? `${docUser.firstName} ${docUser.lastName}` : 'Physician'}
                       </h4>
-                      <p className="text-[11px] text-brand-300 font-semibold">{doc.specialization}</p>
-                      <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono mt-1">
+                      <p className="text-xs text-slate-600 font-semibold">{doc.specialization}</p>
+                      <div className="flex items-center justify-between text-xs text-slate-500 font-mono mt-1">
                         <span>{doc.qualification || 'MD'}</span>
-                        <span className="text-emerald-400 font-bold">${doc.consultationFee.toFixed(2)}</span>
+                        <span className="text-primary font-bold">${doc.consultationFee.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
@@ -488,23 +474,23 @@ export const BookAppointmentFlowPage: React.FC = () => {
         {/* Step 3: Date & Time Slots */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-brand-400 uppercase tracking-wider mb-1.5 flex items-center">
+            <label className="block text-sm font-bold text-primary mb-1.5 flex items-center">
               <Calendar className="w-4 h-4 mr-1.5" />
-              3. Consultation Date
+              3. Date
             </label>
             <input
               type="date"
               required
               value={appointmentDate}
               onChange={(e) => setAppointmentDate(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl glass-input text-white text-xs focus:outline-none"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-secondary bg-white text-slate-900 text-sm focus:outline-none focus:border-primary"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-brand-400 uppercase tracking-wider mb-1.5 flex items-center">
+            <label className="block text-sm font-bold text-primary mb-1.5 flex items-center">
               <Clock className="w-4 h-4 mr-1.5" />
-              Available Time Slot
+              Time Slot
             </label>
             <div className="grid grid-cols-4 gap-1.5">
               {availableSlots.map((slot) => (
@@ -513,12 +499,12 @@ export const BookAppointmentFlowPage: React.FC = () => {
                   type="button"
                   disabled={!slot.available}
                   onClick={() => setAppointmentTime(slot.time)}
-                  className={`py-2 rounded-xl text-[11px] font-mono font-bold transition-all ${
+                  className={`py-2 rounded-xl text-xs font-mono font-bold transition-all ${
                     !slot.available
-                      ? 'bg-slate-950 text-slate-600 border border-slate-900 cursor-not-allowed line-through'
+                      ? 'bg-secondary/20 text-slate-400 border border-secondary cursor-not-allowed line-through'
                       : appointmentTime === slot.time
-                      ? 'bg-brand-500 text-slate-950 shadow-glow-cyan'
-                      : 'bg-slate-900 text-slate-300 border border-slate-800 hover:border-slate-700'
+                      ? 'bg-primary text-white shadow-sm'
+                      : 'bg-white text-slate-700 border border-secondary hover:border-primary'
                   }`}
                 >
                   {slot.time}
@@ -531,11 +517,11 @@ export const BookAppointmentFlowPage: React.FC = () => {
         {/* Step 4: Patient & Reason */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-400 mb-1">Patient Profile</label>
+            <label className="block text-sm font-bold text-slate-700 mb-1">Patient Profile</label>
             <select
               value={selectedPatientId}
               onChange={(e) => setSelectedPatientId(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl glass-input text-white bg-slate-900 text-xs focus:outline-none mb-2"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-secondary bg-white text-slate-900 text-sm focus:outline-none focus:border-primary mb-2"
             >
               {patients.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -552,7 +538,7 @@ export const BookAppointmentFlowPage: React.FC = () => {
                   required
                   value={newPatientName}
                   onChange={(e) => setNewPatientName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl glass-input text-white bg-slate-900 text-xs focus:outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-secondary bg-white text-slate-900 text-sm focus:outline-none focus:border-primary"
                 />
                 <input
                   type="number"
@@ -560,12 +546,12 @@ export const BookAppointmentFlowPage: React.FC = () => {
                   required
                   value={newPatientAge}
                   onChange={(e) => setNewPatientAge(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl glass-input text-white bg-slate-900 text-xs focus:outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-secondary bg-white text-slate-900 text-sm focus:outline-none focus:border-primary"
                 />
                 <select
                   value={newPatientGender}
                   onChange={(e) => setNewPatientGender(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl glass-input text-white bg-slate-900 text-xs focus:outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-secondary bg-white text-slate-900 text-sm focus:outline-none focus:border-primary"
                 >
                   <option value="male">Male</option>
                   <option value="female">Female</option>
@@ -578,82 +564,82 @@ export const BookAppointmentFlowPage: React.FC = () => {
                   required
                   value={newPatientPhone}
                   onChange={(e) => setNewPatientPhone(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl glass-input text-white bg-slate-900 text-xs focus:outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-secondary bg-white text-slate-900 text-sm focus:outline-none focus:border-primary"
                 />
                 <input
                   type="email"
                   placeholder="Email (optional)"
                   value={newPatientEmail}
                   onChange={(e) => setNewPatientEmail(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl glass-input text-white bg-slate-900 text-xs focus:outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-secondary bg-white text-slate-900 text-sm focus:outline-none focus:border-primary"
                 />
                 <input
                   type="text"
                   placeholder="Address (optional)"
                   value={newPatientAddress}
                   onChange={(e) => setNewPatientAddress(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl glass-input text-white bg-slate-900 text-xs focus:outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-secondary bg-white text-slate-900 text-sm focus:outline-none focus:border-primary"
                 />
               </div>
             )}
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-400 mb-1">Encounter Type</label>
+            <label className="block text-sm font-bold text-slate-700 mb-1">Encounter Type</label>
             <div className="flex items-center space-x-2">
               <button
                 type="button"
                 onClick={() => setAppointmentType('in_person')}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all ${
                   appointmentType === 'in_person'
-                    ? 'bg-brand-500/20 border-brand-500 text-brand-300'
-                    : 'bg-slate-900 border-slate-800 text-slate-400'
+                    ? 'bg-primary/10 border-primary text-primary'
+                    : 'bg-white border-secondary text-slate-600'
                 }`}
               >
-                In-Hospital Visit
+                In-Clinic
               </button>
               <button
                 type="button"
                 onClick={() => setAppointmentType('telehealth')}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all ${
                   appointmentType === 'telehealth'
-                    ? 'bg-purple-500/20 border-purple-500 text-purple-300'
-                    : 'bg-slate-900 border-slate-800 text-slate-400'
+                    ? 'bg-primary/10 border-primary text-primary'
+                    : 'bg-white border-secondary text-slate-600'
                 }`}
               >
-                Telehealth Video
+                Telehealth
               </button>
             </div>
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-400 mb-1">Reason for Visit / Clinical Symptoms</label>
+          <label className="block text-sm font-bold text-slate-700 mb-1">Reason for Visit</label>
           <textarea
             rows={3}
             required
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            className="w-full p-3 rounded-xl glass-input text-white text-xs focus:outline-none"
-            placeholder="Describe reason for consultation or symptoms experienced..."
+            className="w-full p-3 rounded-xl border border-secondary bg-white text-slate-900 text-sm focus:outline-none focus:border-primary"
+            placeholder="Describe reason for consultation..."
           />
         </div>
 
         {/* Submit */}
-        <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
+        <div className="pt-3 border-t border-secondary flex items-center justify-between">
           <button
             type="button"
             onClick={() => navigate('/hospitals')}
-            className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center space-x-1"
+            className="px-4 py-2.5 rounded-xl bg-white border border-secondary hover:bg-secondary/20 text-slate-700 font-bold text-sm flex items-center space-x-1"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Hospitals</span>
+            <span>Back</span>
           </button>
 
           <button
             type="submit"
             disabled={submitting}
-            className="px-6 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs shadow-glow-cyan flex items-center space-x-1.5 disabled:opacity-50 transition-all hover:scale-[1.02]"
+            className="px-6 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-sm shadow-sm flex items-center space-x-1.5 disabled:opacity-50 transition-all hover:scale-[1.02]"
           >
             <span>Confirm Appointment</span>
             <ArrowRight className="w-4 h-4" />

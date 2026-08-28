@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { UserRole } from '../../types/shared';
-import { Clock, LogOut, ShieldAlert } from 'lucide-react';
+import { Clock, LogOut, ShieldAlert, Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
   allowedRoles?: UserRole[];
@@ -15,10 +15,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
 
   if (!isInitialized) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0B101E]">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center space-y-4">
-          <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-brand-300 font-mono text-sm tracking-wider">Loading your profile...</p>
+          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+          <p className="text-slate-600 font-medium">Verifying access...</p>
         </div>
       </div>
     );

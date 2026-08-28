@@ -145,27 +145,27 @@ export const AppointmentsPage: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Appointments & Scheduling</h1>
-          <p className="text-xs text-slate-400">Doctor schedules, triage queues, and autonomous slot negotiation</p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Appointments & Scheduling</h1>
+          <p className="text-sm text-slate-600">Doctor schedules, triage queues, and autonomous slot negotiation</p>
         </div>
 
         <div className="flex items-center space-x-2.5">
           {/* Agent Scheduling Trigger */}
           <button
             onClick={() => setIsAgentBookingOpen(true)}
-            className="flex items-center space-x-1.5 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600/30 to-brand-600/30 hover:from-purple-600/50 hover:to-brand-600/50 border border-purple-500/40 text-purple-300 text-xs font-bold shadow-sm transition-all"
+            className="flex items-center space-x-1.5 px-3.5 py-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 text-sm font-bold shadow-sm transition-all"
           >
-            <Sparkles className="w-4 h-4 text-purple-400 animate-pulse" />
+            <Sparkles className="w-4 h-4 text-purple-600 animate-pulse" />
             <span>AI Smart Scheduling Agent</span>
           </button>
 
           <button
             onClick={() => setIsBookingOpen(true)}
-            className="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs shadow-glow-cyan transition-all"
+            className="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-sm shadow-sm transition-all"
           >
             <Plus className="w-4 h-4" />
             <span>New Appointment</span>
@@ -174,15 +174,15 @@ export const AppointmentsPage: React.FC = () => {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center space-x-2 border-b border-slate-800 pb-2 overflow-x-auto text-xs">
+      <div className="flex items-center space-x-2 border-b border-secondary pb-2 overflow-x-auto text-sm">
         {['all', 'scheduled', 'checked_in', 'in_consultation', 'completed', 'cancelled'].map((status) => (
           <button
             key={status}
             onClick={() => setStatusFilter(status)}
             className={`px-3 py-1.5 rounded-xl font-semibold capitalize transition-all ${
               statusFilter === status
-                ? 'bg-brand-500/20 text-brand-300 border border-brand-500/40'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                ? 'bg-primary/10 text-primary border border-primary'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-secondary/20'
             }`}
           >
             {status.replace(/_/g, ' ')}
@@ -193,7 +193,7 @@ export const AppointmentsPage: React.FC = () => {
       {/* Appointments List */}
       <div className="space-y-3">
         {filteredAppointments.length === 0 ? (
-          <div className="p-12 rounded-2xl glass-card border border-slate-800 text-center text-slate-500 text-xs">
+          <div className="p-12 rounded-2xl bg-white border border-secondary text-center text-slate-500 text-sm">
             No appointments matching the selected filter.
           </div>
         ) : (
@@ -204,48 +204,48 @@ export const AppointmentsPage: React.FC = () => {
             return (
               <div
                 key={apt.id}
-                className="p-4 rounded-2xl glass-card border border-slate-800 glass-card-hover flex flex-col md:flex-row md:items-center justify-between gap-4"
+                className="p-4 rounded-2xl bg-white border border-secondary hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
               >
                 <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-700 flex flex-col items-center justify-center font-bold text-brand-400">
+                  <div className="w-12 h-12 rounded-2xl bg-secondary/20 border border-secondary flex flex-col items-center justify-center font-bold text-primary">
                     <CalendarIcon className="w-4 h-4" />
-                    <span className="text-[10px] font-mono mt-0.5">
+                    <span className="text-xs font-mono mt-0.5">
                       {new Date(apt.dateTime).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}
                     </span>
                   </div>
 
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
-                      <h3 className="font-bold text-sm text-white">
+                      <h3 className="font-bold text-base text-slate-900">
                         {patient ? `${patient.firstName} ${patient.lastName}` : 'Patient'}
                       </h3>
-                      <span className="text-[10px] font-mono text-slate-400">({patient?.mrn || 'NX-2026'})</span>
+                      <span className="text-xs font-mono text-slate-500">({patient?.mrn || 'NX-2026'})</span>
                       <span
-                        className={`text-[9px] px-2 py-0.2 rounded font-mono uppercase font-bold ${
+                        className={`text-xs px-2 py-0.5 rounded font-bold capitalize ${
                           apt.status === 'in_consultation'
-                            ? 'bg-amber-500/20 text-amber-300 animate-pulse'
+                            ? 'bg-amber-100 text-amber-700'
                             : apt.status === 'completed'
-                            ? 'bg-emerald-500/20 text-emerald-300'
+                            ? 'bg-emerald-100 text-emerald-700'
                             : apt.status === 'checked_in'
-                            ? 'bg-cyan-500/20 text-cyan-300'
-                            : 'bg-slate-800 text-slate-300'
+                            ? 'bg-cyan-100 text-cyan-700'
+                            : 'bg-secondary/30 text-slate-700'
                         }`}
                       >
                         {apt.status.replace(/_/g, ' ')}
                       </span>
                     </div>
 
-                    <p className="text-xs text-slate-300 font-medium">{apt.reason}</p>
-                    <div className="flex flex-wrap items-center gap-x-3 text-[11px] text-slate-400">
-                      <span className="text-rose-300 font-semibold flex items-center">
-                        <Building2 className="w-3 h-3 mr-1 text-rose-400" />
+                    <p className="text-sm text-slate-600 font-medium">{apt.reason}</p>
+                    <div className="flex flex-wrap items-center gap-x-3 text-xs text-slate-500">
+                      <span className="text-rose-600 font-semibold flex items-center">
+                        <Building2 className="w-3 h-3 mr-1 text-rose-500" />
                         {apt.hospital?.name || 'Apollo Hospital & Medical Center'}
                       </span>
                       <span>
                         Attending: Dr. {doctor?.user ? `${doctor.user.firstName} ${doctor.user.lastName}` : 'Sophia Chen'} ({doctor?.specialization || 'Cardiology'})
                       </span>
                       <span>
-                        Time: <span className="font-mono text-brand-300">{new Date(apt.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        Time: <span className="font-mono font-bold text-primary">{new Date(apt.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       </span>
                     </div>
                   </div>
@@ -255,26 +255,26 @@ export const AppointmentsPage: React.FC = () => {
                 <div className="flex items-center space-x-2 self-end md:self-auto">
                   <button
                     onClick={() => handleStartConsultation(apt.id)}
-                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs shadow-glow-cyan flex items-center space-x-1 transition-all"
+                    className="px-3 py-1.5 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-sm shadow-sm flex items-center space-x-1 transition-all"
                   >
                     <Stethoscope className="w-3.5 h-3.5" />
-                    <span>Start Consultation</span>
+                    <span>Start</span>
                   </button>
 
                   {apt.type === 'telehealth' && (
                     <Link
                       to={`/telehealth?room=${apt.telehealthRoomId || 'demo-room'}`}
-                      className="px-3 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 text-xs font-bold flex items-center space-x-1.5 transition-colors"
+                      className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-sm font-bold flex items-center space-x-1.5 transition-colors"
                     >
                       <Video className="w-3.5 h-3.5" />
-                      <span>Join Consultation</span>
+                      <span>Join</span>
                     </Link>
                   )}
 
                   {apt.status !== 'completed' && apt.status !== 'cancelled' && (
                     <button
                       onClick={() => handleStatusChange(apt.id, 'cancelled')}
-                      className="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-rose-500/20 hover:text-rose-300 text-slate-500 text-xs font-semibold border border-slate-800 transition-colors"
+                      className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-rose-50 hover:text-rose-600 text-slate-600 text-sm font-semibold border border-secondary transition-colors"
                       title="Cancel Appointment"
                     >
                       Cancel
@@ -283,15 +283,15 @@ export const AppointmentsPage: React.FC = () => {
 
                   <Link
                     to={`/clinical-notes?appointmentId=${apt.id}&patientId=${apt.patientId}`}
-                    className="px-3 py-1.5 rounded-xl bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 border border-brand-500/40 text-xs font-bold transition-colors"
+                    className="px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-sm font-bold transition-colors"
                   >
-                    SOAP Note
+                    Note
                   </Link>
 
                   {apt.status !== 'completed' && apt.status !== 'cancelled' && (
                     <button
                       onClick={() => handleStatusChange(apt.id, 'completed')}
-                      className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-colors"
+                      className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-sm font-bold transition-colors"
                     >
                       Complete
                     </button>
@@ -305,22 +305,22 @@ export const AppointmentsPage: React.FC = () => {
 
       {/* Manual Booking Modal */}
       {isBookingOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="w-full max-w-lg glass-card rounded-2xl border border-slate-700 p-5 space-y-4 text-xs">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <h3 className="font-bold text-sm text-white">Book Appointment</h3>
-              <button onClick={() => setIsBookingOpen(false)} className="text-slate-400 hover:text-white">
-                <X className="w-4 h-4" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="w-full max-w-lg bg-white rounded-2xl border border-secondary shadow-lg p-5 space-y-4 text-sm">
+            <div className="flex items-center justify-between border-b border-secondary pb-2">
+              <h3 className="font-bold text-lg text-slate-900">Book Appointment</h3>
+              <button onClick={() => setIsBookingOpen(false)} className="text-slate-400 hover:text-slate-900">
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleManualBook} className="space-y-3">
+            <form onSubmit={handleManualBook} className="space-y-4">
               <div>
-                <label className="block text-slate-400 mb-1">Select Patient</label>
+                <label className="block text-slate-700 font-bold mb-1">Select Patient</label>
                 <select
                   value={formData.patientId}
                   onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl glass-input text-white bg-slate-900 focus:outline-none"
+                  className="w-full px-3 py-2 rounded-xl border border-secondary bg-white text-slate-900 focus:outline-none focus:border-primary"
                 >
                   {patients.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -331,11 +331,11 @@ export const AppointmentsPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Select Doctor</label>
+                <label className="block text-slate-700 font-bold mb-1">Select Doctor</label>
                 <select
                   value={formData.doctorId}
                   onChange={(e) => setFormData({ ...formData, doctorId: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl glass-input text-white bg-slate-900 focus:outline-none"
+                  className="w-full px-3 py-2 rounded-xl border border-secondary bg-white text-slate-900 focus:outline-none focus:border-primary"
                 >
                   {doctors.map((d) => (
                     <option key={d.id} value={d.id}>
@@ -347,50 +347,50 @@ export const AppointmentsPage: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 mb-1">Date & Time</label>
+                  <label className="block text-slate-700 font-bold mb-1">Date & Time</label>
                   <input
                     type="datetime-local"
                     value={formData.dateTime}
                     onChange={(e) => setFormData({ ...formData, dateTime: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl glass-input text-white focus:outline-none"
+                    className="w-full px-3 py-2 rounded-xl border border-secondary bg-white text-slate-900 focus:outline-none focus:border-primary"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1">Visit Type</label>
+                  <label className="block text-slate-700 font-bold mb-1">Visit Type</label>
                   <select
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl glass-input text-white bg-slate-900 focus:outline-none"
+                    className="w-full px-3 py-2 rounded-xl border border-secondary bg-white text-slate-900 focus:outline-none focus:border-primary"
                   >
-                    <option value="in_person">In-Person Clinic</option>
-                    <option value="telehealth">Virtual Telehealth</option>
+                    <option value="in_person">In-Clinic</option>
+                    <option value="telehealth">Telehealth</option>
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Reason for Encounter</label>
+                <label className="block text-slate-700 font-bold mb-1">Reason for Encounter</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Hypertension review, Routine checkup"
                   value={formData.reason}
                   onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl glass-input text-white focus:outline-none"
+                  className="w-full px-3 py-2 rounded-xl border border-secondary bg-white text-slate-900 focus:outline-none focus:border-primary"
                 />
               </div>
 
-              <div className="pt-2 border-t border-slate-800 flex justify-end space-x-2">
+              <div className="pt-4 border-t border-secondary flex justify-end space-x-2">
                 <button
                   type="button"
                   onClick={() => setIsBookingOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold"
+                  className="px-4 py-2 rounded-xl bg-white border border-secondary hover:bg-secondary/20 text-slate-700 font-bold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold shadow-glow-cyan"
+                  className="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold shadow-sm"
                 >
                   Confirm Appointment
                 </button>
@@ -402,30 +402,30 @@ export const AppointmentsPage: React.FC = () => {
 
       {/* Autonomous Scheduling Agent Modal */}
       {isAgentBookingOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="w-full max-w-xl glass-card rounded-2xl border border-purple-500/40 p-5 space-y-4 text-xs shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="w-full max-w-xl bg-white rounded-2xl border border-secondary shadow-lg p-5 space-y-4 text-sm">
+            <div className="flex items-center justify-between border-b border-secondary pb-2">
               <div className="flex items-center space-x-2">
-                <div className="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center">
-                  <Bot className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center">
+                  <Bot className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-white">Appointment Scheduling Agent</h3>
-                  <p className="text-[10px] text-purple-300 font-mono">Autonomous Slot Optimization & Triage</p>
+                  <h3 className="font-bold text-lg text-slate-900">Appointment Scheduling Agent</h3>
+                  <p className="text-xs text-purple-600 font-mono">Autonomous Slot Optimization & Triage</p>
                 </div>
               </div>
-              <button onClick={() => setIsAgentBookingOpen(false)} className="text-slate-400 hover:text-white">
-                <X className="w-4 h-4" />
+              <button onClick={() => setIsAgentBookingOpen(false)} className="text-slate-400 hover:text-slate-900">
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
-                <label className="block text-slate-400 mb-1">Patient</label>
+                <label className="block text-slate-700 font-bold mb-1">Patient</label>
                 <select
                   value={agentForm.patientId}
                   onChange={(e) => setAgentForm({ ...agentForm, patientId: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl glass-input text-white bg-slate-900 focus:outline-none"
+                  className="w-full px-3 py-2 rounded-xl border border-secondary bg-white text-slate-900 focus:outline-none focus:border-primary"
                 >
                   {patients.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -436,49 +436,49 @@ export const AppointmentsPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Patient Reported Symptoms / Clinical Request</label>
+                <label className="block text-slate-700 font-bold mb-1">Patient Reported Symptoms / Clinical Request</label>
                 <textarea
                   rows={3}
                   value={agentForm.symptoms}
                   onChange={(e) => setAgentForm({ ...agentForm, symptoms: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl glass-input text-white focus:outline-none"
+                  className="w-full px-3 py-2 rounded-xl border border-secondary bg-white text-slate-900 focus:outline-none focus:border-primary"
                 />
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex justify-end pt-2">
                 <button
                   type="button"
                   onClick={handleRunSchedulingAgent}
                   disabled={agentRunning}
-                  className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition-all disabled:opacity-50"
+                  className="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold transition-all disabled:opacity-50"
                 >
-                  <Sparkles className={`w-3.5 h-3.5 ${agentRunning ? 'animate-spin' : ''}`} />
+                  <Sparkles className={`w-4 h-4 ${agentRunning ? 'animate-spin' : ''}`} />
                   <span>{agentRunning ? 'Negotiating Slots...' : 'Run Scheduling Agent'}</span>
                 </button>
               </div>
 
               {/* Agent Recommendation Result */}
               {agentRecommendation && (
-                <div className="p-4 rounded-xl bg-slate-900 border border-purple-500/40 space-y-2 animate-in fade-in">
+                <div className="p-4 rounded-xl bg-purple-50 border border-purple-200 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-white">Optimal Slot Recommendation</span>
-                    <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-300">
+                    <span className="font-bold text-slate-900">Optimal Slot Recommendation</span>
+                    <span className="text-xs uppercase font-bold px-2 py-0.5 rounded bg-purple-200 text-purple-800">
                       Triage: {agentRecommendation.triageLevel || 'Routine'}
                     </span>
                   </div>
 
-                  <p className="text-brand-300 font-mono text-sm">
+                  <p className="text-purple-700 font-bold font-mono">
                     Recommended: {new Date(agentRecommendation.recommendedSlot || new Date()).toLocaleString()}
                   </p>
 
-                  <p className="text-slate-300 leading-relaxed">
+                  <p className="text-slate-700 text-sm leading-relaxed">
                     {agentRecommendation.reasoning || 'Evaluated doctor workload and patient symptom history to allocate lowest-conflict slot.'}
                   </p>
 
-                  <div className="pt-2 flex justify-end">
+                  <div className="pt-4 flex justify-end">
                     <button
                       onClick={handleConfirmAgentBooking}
-                      className="px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold"
+                      className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold shadow-sm"
                     >
                       Book Recommended Slot
                     </button>

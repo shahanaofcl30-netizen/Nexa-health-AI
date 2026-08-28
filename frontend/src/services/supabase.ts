@@ -15,7 +15,7 @@ export const isSupabaseConfigured = Boolean(
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
       global: {
-        fetch: (url, options) => {
+        fetch: (url: RequestInfo | URL, options?: RequestInit) => {
           const token = localStorage.getItem('nexa_token');
           const headers = new Headers(options?.headers);
           if (token) {
