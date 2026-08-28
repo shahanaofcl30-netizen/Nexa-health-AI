@@ -21,6 +21,11 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
     });
   } catch(e) {}
 
+  results = results.filter((p) => {
+    const fullName = `${p.firstName || ''} ${p.lastName || ''}`.trim().toLowerCase();
+    return fullName !== 'emily davis' && fullName !== 'robert johnson' && p.email !== 'emily.davis@patient.nexa.ai' && p.email !== 'robert.j@patient.nexa.ai';
+  });
+
   if (query) {
     results = results.filter(
       (p) =>

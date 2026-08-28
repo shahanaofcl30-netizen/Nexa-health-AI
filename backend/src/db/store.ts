@@ -951,58 +951,7 @@ class DataStore {
     },
   ];
 
-  public patients: Patient[] = [
-    {
-      id: '50000000-0000-0000-0000-000000000001',
-      userId: '30000000-0000-0000-0000-000000000009',
-      mrn: 'NX-2026-001',
-      firstName: 'Emily',
-      lastName: 'Davis',
-      dateOfBirth: '1988-04-12',
-      gender: 'female',
-      bloodGroup: 'O+',
-      phone: '+1 (555) 789-0123',
-      email: 'emily.davis@patient.nexa.ai',
-      address: '742 Evergreen Terrace, San Francisco, CA',
-      emergencyContactName: 'Mark Davis',
-      emergencyContactPhone: '+1 (555) 789-0124',
-      emergencyContactRelation: 'Spouse',
-      allergies: ['Penicillin', 'Sulfa drugs'],
-      chronicConditions: ['Hypertension', 'Mild Asthma'],
-      insuranceProvider: 'Blue Cross Blue Shield',
-      insurancePolicyNumber: 'BCBS-9941829',
-      insuranceGroupNumber: 'GRP-5520',
-      livingSummary:
-        '38-year-old female with diagnosed stage 1 essential hypertension and mild episodic asthma. Well controlled on Lisinopril 10mg. Penicillin anaphylaxis history. Most recent blood pressure 122/80 mmHg.',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: '50000000-0000-0000-0000-000000000002',
-      userId: '30000000-0000-0000-0000-000000000010',
-      mrn: 'NX-2026-002',
-      firstName: 'Robert',
-      lastName: 'Johnson',
-      dateOfBirth: '1965-11-23',
-      gender: 'male',
-      bloodGroup: 'A+',
-      phone: '+1 (555) 456-7891',
-      email: 'robert.j@patient.nexa.ai',
-      address: '1204 Pine Street, Apt 3B, San Francisco, CA',
-      emergencyContactName: 'Linda Johnson',
-      emergencyContactPhone: '+1 (555) 456-7892',
-      emergencyContactRelation: 'Spouse',
-      allergies: ['Aspirin'],
-      chronicConditions: ['Type 2 Diabetes Mellitus', 'Hyperlipidemia'],
-      insuranceProvider: 'Aetna Healthcare',
-      insurancePolicyNumber: 'AET-8839102',
-      insuranceGroupNumber: 'GRP-1049',
-      livingSummary:
-        '60-year-old male with Type 2 Diabetes (HbA1c 7.8%) and hyperlipidemia. Currently prescribed Metformin 500mg BID and Atorvastatin 20mg daily. Scheduled for quarterly metabolic panel review.',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-  ];
+  public patients: Patient[] = [];
 
   public appointments: Appointment[] = [];
 

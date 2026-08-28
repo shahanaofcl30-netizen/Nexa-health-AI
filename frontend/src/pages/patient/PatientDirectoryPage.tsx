@@ -51,7 +51,12 @@ export const PatientDirectoryPage: React.FC = () => {
         api.get('/appointments')
       ]);
       
-      setPatients(res.data);
+      const filtered = res.data.filter((p: Patient) => {
+        const fullName = `${p.firstName || ''} ${p.lastName || ''}`.trim().toLowerCase();
+        return fullName !== 'emily davis' && fullName !== 'robert johnson' && p.email !== 'emily.davis@patient.nexa.ai' && p.email !== 'robert.j@patient.nexa.ai';
+      });
+      
+      setPatients(filtered);
       setAppointments(aptRes.data);
     } catch (err) {
       console.error('Failed to fetch data:', err);
