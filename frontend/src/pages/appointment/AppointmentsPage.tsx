@@ -9,6 +9,7 @@ import {
   Clock,
   Filter,
   Plus,
+  RefreshCw,
   Search,
   Sparkles,
   Stethoscope,
@@ -18,13 +19,18 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import { Appointment, Patient, Doctor } from '../../types/shared';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useCurrentPatient } from '../../hooks/usePatients';
 
 export const AppointmentsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { currentUser, activeRole } = useAuthStore();
+  const { data: currentPatient } = useCurrentPatient();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isAgentBookingOpen, setIsAgentBookingOpen] = useState(false);
@@ -51,25 +57,33 @@ export const AppointmentsPage: React.FC = () => {
 
   const fetchAppointments = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
+      const isPatient = activeRole === 'patient' || currentUser?.role === 'patient';
+      const effectivePatientId = isPatient ? (currentPatient?.id || currentUser?.id) : undefined;
+      const aptUrl = effectivePatientId ? `/appointments?patientId=${effectivePatientId}` : '/appointments';
+
       const [aptRes, patRes, docRes] = await Promise.all([
-        api.get('/appointments'),
+        api.get(aptUrl),
         api.get('/patients'),
         api.get('/doctors'),
       ]);
       setAppointments(aptRes.data);
       setPatients(patRes.data);
       setDoctors(docRes.data);
-      if (patRes.data.length > 0 && !formData.patientId) {
-        setFormData((prev) => ({ ...prev, patientId: patRes.data[0].id }));
-        setAgentForm((prev) => ({ ...prev, patientId: patRes.data[0].id }));
+
+      const defaultPatId = effectivePatientId || (patRes.data.length > 0 ? patRes.data[0].id : '');
+      if (defaultPatId && !formData.patientId) {
+        setFormData((prev) => ({ ...prev, patientId: defaultPatId }));
+        setAgentForm((prev) => ({ ...prev, patientId: defaultPatId }));
       }
       if (docRes.data.length > 0 && !formData.doctorId) {
         setFormData((prev) => ({ ...prev, doctorId: docRes.data[0].id }));
         setAgentForm((prev) => ({ ...prev, doctorId: docRes.data[0].id }));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load appointments:', err);
+      setLoadError(err?.response?.data?.error || 'Unable to connect to server to load appointments. Please check your connection.');
     } finally {
       setLoading(false);
     }
@@ -77,7 +91,7 @@ export const AppointmentsPage: React.FC = () => {
 
   useEffect(() => {
     fetchAppointments();
-  }, []);
+  }, [currentPatient?.id, activeRole, currentUser?.id]);
 
   const handleStatusChange = async (appointmentId: string, newStatus: string) => {
     try {
@@ -192,9 +206,23 @@ export const AppointmentsPage: React.FC = () => {
 
       {/* Appointments List */}
       <div className="space-y-3">
-        {filteredAppointments.length === 0 ? (
+        {loadError ? (
+          <div className="p-8 rounded-2xl bg-amber-50 border border-amber-200 text-center space-y-3">
+            <div className="flex items-center justify-center space-x-2 text-amber-800 text-sm font-semibold">
+              <AlertCircle className="w-5 h-5 text-amber-600" />
+              <span>{loadError}</span>
+            </div>
+            <button
+              onClick={fetchAppointments}
+              className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-sm transition-all"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Retry Loading Appointments</span>
+            </button>
+          </div>
+        ) : filteredAppointments.length === 0 ? (
           <div className="p-12 rounded-2xl bg-white border border-secondary text-center text-slate-500 text-sm">
-            No appointments matching the selected filter.
+            {loading ? 'Loading appointments...' : 'No appointments matching the selected filter.'}
           </div>
         ) : (
           filteredAppointments.map((apt) => {
