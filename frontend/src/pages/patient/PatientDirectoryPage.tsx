@@ -51,14 +51,17 @@ export const PatientDirectoryPage: React.FC = () => {
         api.get('/appointments')
       ]);
       
-      const allowedNames = ['ram', 'shahana', 'joseph'];
-      const filtered = res.data.filter((p: Patient) => {
-        const firstName = (p.firstName || '').trim().toLowerCase();
-        const fullName = `${p.firstName || ''} ${p.lastName || ''}`.trim().toLowerCase();
-        return allowedNames.some(allowed => firstName === allowed || fullName.startsWith(allowed));
-      });
+      const seen = new Set<string>();
+      const uniquePatients: Patient[] = [];
+      for (const p of res.data) {
+        const key = `${p.firstName || ''}-${p.lastName || ''}-${p.phone || ''}`.trim().toLowerCase();
+        if (!seen.has(key) && key.length > 0) {
+          seen.add(key);
+          uniquePatients.push(p);
+        }
+      }
       
-      setPatients(filtered);
+      setPatients(uniquePatients);
       setAppointments(aptRes.data);
     } catch (err) {
       console.error('Failed to fetch data:', err);

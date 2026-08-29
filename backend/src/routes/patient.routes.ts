@@ -12,21 +12,16 @@ const router = Router();
 router.get('/', async (req: AuthenticatedRequest, res: Response) => {
   const query = (req.query.q as string || '').toLowerCase();
   let results = [...store.patients];
-  try {
-    const fbPatients = await firebaseAdminDb.collection('patients').get();
-    fbPatients.forEach((doc: any) => {
-      if (!results.find(p => p.id === doc.id)) {
-        results.push(doc.data() as Patient);
-      }
-    });
-  } catch(e) {}
-
-  const allowedNames = ['ram', 'shahana', 'joseph'];
-  results = results.filter((p) => {
-    const firstName = (p.firstName || '').trim().toLowerCase();
-    const fullName = `${p.firstName || ''} ${p.lastName || ''}`.trim().toLowerCase();
-    return allowedNames.some(allowed => firstName === allowed || fullName.startsWith(allowed));
-  });
+  // Deduplicate and filter out historical test duplicates
+  const seenIds = new Set<string>();
+  const uniqueResults: Patient[] = [];
+  for (const p of results) {
+    if (!seenIds.has(p.id)) {
+      seenIds.add(p.id);
+      uniqueResults.push(p);
+    }
+  }
+  results = uniqueResults;
 
   // Attach latest appointment reason directly into each patient record
   const enrichedResults = results.map((patient) => {
