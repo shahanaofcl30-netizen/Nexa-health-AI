@@ -66,7 +66,13 @@ export const AppointmentsPage: React.FC = () => {
         api.get('/patients'),
         api.get('/doctors'),
       ]);
-      setAppointments(aptRes.data);
+      const validAppointments = (aptRes.data || []).filter((apt: any) => {
+        const patient = (patRes.data || []).find((p: any) => p.id === apt.patientId) || apt.patient;
+        const patientFullName = patient ? `${patient.firstName || ''} ${patient.lastName || ''}`.trim() : (apt.patientName || '');
+        const lower = patientFullName.toLowerCase();
+        return lower !== 'patient' && lower !== 'patient name' && lower !== '' && lower !== 'undefined';
+      });
+      setAppointments(validAppointments);
       setPatients(patRes.data);
       setDoctors(docRes.data);
 
