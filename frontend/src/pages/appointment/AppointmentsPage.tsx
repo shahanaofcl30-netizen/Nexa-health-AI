@@ -66,13 +66,28 @@ export const AppointmentsPage: React.FC = () => {
         api.get('/patients'),
         api.get('/doctors'),
       ]);
-      const validAppointments = (aptRes.data || []).filter((apt: any) => {
+      const seenPatientNames = new Set<string>();
+      const uniqueAppointments: any[] = [];
+
+      for (const apt of aptRes.data || []) {
         const patient = (patRes.data || []).find((p: any) => p.id === apt.patientId) || apt.patient;
         const patientFullName = patient ? `${patient.firstName || ''} ${patient.lastName || ''}`.trim() : (apt.patientName || '');
         const lower = patientFullName.toLowerCase();
-        return lower !== 'patient' && lower !== 'patient name' && lower !== '' && lower !== 'undefined';
-      });
-      setAppointments(validAppointments);
+        
+        if (lower === 'patient' || lower === 'patient name' || lower === '' || lower === 'undefined') {
+          continue;
+        }
+
+        // Canonical patient key (e.g. normalize 'shahana k' and 'shahana')
+        const canonicalKey = lower.startsWith('shahana') ? 'shahana' : lower;
+
+        if (!seenPatientNames.has(canonicalKey)) {
+          seenPatientNames.add(canonicalKey);
+          uniqueAppointments.push(apt);
+        }
+      }
+
+      setAppointments(uniqueAppointments);
       setPatients(patRes.data);
       setDoctors(docRes.data);
 
