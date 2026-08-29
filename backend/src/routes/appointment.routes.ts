@@ -9,10 +9,21 @@ import { Appointment, AppointmentStatus, AppointmentType, TriageLevel } from '..
 const router = Router();
 
 // GET /api/appointments - List appointments with filters
-router.get('/', (req: AuthenticatedRequest, res: Response) => {
+router.get('/', async (req: AuthenticatedRequest, res: Response) => {
   const { doctorId, patientId, hospitalId, status, date } = req.query;
 
-  let results = store.appointments;
+  let results = [...store.appointments];
+  try {
+    if (firebaseAdminDb) {
+      const fbApts = await firebaseAdminDb.collection('appointments').get();
+      fbApts.forEach((doc: any) => {
+        const data = doc.data() as Appointment;
+        if (!results.find((a) => a.id === data.id || a.id === doc.id)) {
+          results.push({ ...data, id: doc.id });
+        }
+      });
+    }
+  } catch (e) {}
 
   // Enforce patient-level isolation: if caller is a patient, resolve all patient profiles for this user
   if (req.user && req.user.role === 'patient') {
