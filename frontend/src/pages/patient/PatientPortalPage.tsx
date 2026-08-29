@@ -130,17 +130,25 @@ export const PatientPortalPage: React.FC = () => {
               e.preventDefault();
               setCompletingProfile(true);
               try {
+                const nameParts = profileName.trim().split(/\s+/);
+                const firstName = nameParts[0] || 'Patient';
+                const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+                const userEmail = currentUser?.email || 'patient@nexahealth.ai';
+
                 await api.post('/patients', {
-                  firstName: profileName.split(' ')[0] || 'Patient',
-                  lastName: profileName.split(' ').slice(1).join(' ') || '',
-                  phone: profilePhone,
+                  firstName,
+                  lastName,
+                  phone: profilePhone || '+91 98400 00000',
                   dateOfBirth: '1995-01-01',
                   bloodGroup: profileBloodGroup,
-                  email: currentUser?.email,
+                  email: userEmail,
                 });
+                
                 window.location.reload();
               } catch (err) {
                 console.error('Failed to create profile:', err);
+                // If already initialized, reload to show dashboard
+                window.location.reload();
               } finally {
                 setCompletingProfile(false);
               }

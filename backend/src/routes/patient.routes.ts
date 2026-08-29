@@ -171,15 +171,16 @@ router.post('/', requireRole('patient', 'front_desk', 'nurse', 'doctor', 'admin'
     insuranceGroupNumber,
   } = req.body;
 
-  if (!firstName || !lastName || !phone || !email) {
-    return res.status(400).json({ error: 'firstName, lastName, phone, and email are required' });
+  if (!firstName || !phone || !email) {
+    return res.status(400).json({ error: 'firstName, phone, and email are required' });
   }
 
   const newPatient: Patient = {
-    id: uuidv4(),
+    id: req.user?.id || uuidv4(),
+    userId: req.user?.id || undefined,
     mrn: `NX-${new Date().getFullYear()}-${String(store.patients.length + 1).padStart(3, '0')}`,
     firstName,
-    lastName,
+    lastName: lastName || '',
     dateOfBirth: dateOfBirth || '1990-01-01',
     gender: gender || 'undisclosed',
     bloodGroup: bloodGroup || undefined,
