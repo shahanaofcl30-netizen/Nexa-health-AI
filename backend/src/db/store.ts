@@ -1268,58 +1268,7 @@ class DataStore {
 
   public prescriptions: Prescription[] = [];
 
-  public labOrders: LabOrder[] = [
-    {
-      id: '85000000-0000-0000-0000-000000000001',
-      patientId: '50000000-0000-0000-0000-000000000001',
-      doctorId: '40000000-0000-0000-0000-000000000001',
-      hospitalId: '90000000-0000-0000-0000-000000000001',
-      appointmentId: '60000000-0000-0000-0000-000000000001',
-      tests: [
-        {
-          id: uuidv4(),
-          testName: 'Serum Potassium (K+)',
-          testCategory: 'Biochemistry',
-          resultValue: '4.2',
-          unit: 'mEq/L',
-          referenceRange: '3.5 - 5.0',
-          isAbnormal: false,
-          status: 'completed',
-        },
-        {
-          id: uuidv4(),
-          testName: 'Serum Creatinine',
-          testCategory: 'Biochemistry',
-          resultValue: '0.85',
-          unit: 'mg/dL',
-          referenceRange: '0.60 - 1.10',
-          isAbnormal: false,
-          status: 'completed',
-        },
-        {
-          id: uuidv4(),
-          testName: 'LDL Cholesterol',
-          testCategory: 'Lipid Panel',
-          resultValue: '128',
-          unit: 'mg/dL',
-          referenceRange: '< 100',
-          isAbnormal: true,
-          status: 'completed',
-        },
-      ],
-      status: 'completed',
-      clinicalNotes: 'Routine metabolic and lipid monitoring for hypertension management.',
-      aiAnalysis: {
-        abnormalFindings: ['LDL Cholesterol slightly elevated (128 mg/dL vs normal <100 mg/dL)'],
-        plainLanguageSummary:
-          'Your kidney function tests (Creatinine) and electrolytes (Potassium) are in healthy normal ranges. Your LDL ("bad") cholesterol is mildly elevated. Dietary lifestyle modifications recommended.',
-        suggestedFollowUp: 'Recheck lipid panel in 6 months with fasting specimen.',
-        generatedAt: new Date().toISOString(),
-      },
-      orderedAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-      completedAt: new Date().toISOString(),
-    },
-  ];
+  public labOrders: LabOrder[] = [];
 
   public invoices: Invoice[] = [];
 
