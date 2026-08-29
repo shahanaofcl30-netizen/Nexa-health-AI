@@ -51,9 +51,11 @@ export const PatientDirectoryPage: React.FC = () => {
         api.get('/appointments')
       ]);
       
+      const allowedNames = ['ram', 'shahana', 'joseph'];
       const filtered = res.data.filter((p: Patient) => {
+        const firstName = (p.firstName || '').trim().toLowerCase();
         const fullName = `${p.firstName || ''} ${p.lastName || ''}`.trim().toLowerCase();
-        return fullName !== 'emily davis' && fullName !== 'robert johnson' && fullName !== 'shahana k' && p.email !== 'emily.davis@patient.nexa.ai' && p.email !== 'robert.j@patient.nexa.ai';
+        return allowedNames.some(allowed => firstName === allowed || fullName.startsWith(allowed));
       });
       
       setPatients(filtered);
