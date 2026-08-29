@@ -341,26 +341,28 @@ export const DoctorConsultationPage: React.FC = () => {
             {/* Symptoms & Diagnosis */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-300">
-                  Presenting Symptoms <span className="text-[10px] text-brand-400 font-normal">(Reported by Patient - Read Only)</span>
+                <label className="block text-xs font-bold text-slate-700">
+                  Presenting Symptoms <span className="text-[10px] text-primary font-normal">(Reported by Patient - Read Only)</span>
                 </label>
                 <textarea
                   rows={3}
                   readOnly
+                  spellCheck={false}
                   value={appointment?.reason || symptoms || 'No symptoms reported by patient'}
-                  className="w-full p-3 rounded-xl glass-input text-slate-300 bg-slate-900/80 border border-slate-700/60 text-xs focus:outline-none cursor-not-allowed select-none"
+                  className="w-full p-3 rounded-xl border border-secondary bg-slate-50 text-slate-800 text-xs focus:outline-none cursor-not-allowed select-none placeholder:text-slate-400"
                   placeholder="Patient reported symptoms..."
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-300">Clinical Diagnosis (ICD-10)</label>
+                <label className="block text-xs font-bold text-slate-700">Clinical Diagnosis (ICD-10)</label>
                 <textarea
                   rows={3}
                   required
+                  spellCheck={false}
                   value={diagnosis}
                   onChange={(e) => setDiagnosis(e.target.value)}
-                  className="w-full p-3 rounded-xl glass-input text-white text-xs focus:outline-none"
+                  className="w-full p-3 rounded-xl border border-secondary bg-white text-slate-900 font-medium text-xs focus:outline-none focus:border-primary placeholder:text-slate-400"
                   placeholder="Enter primary and differential diagnoses..."
                 />
               </div>
@@ -369,24 +371,26 @@ export const DoctorConsultationPage: React.FC = () => {
             {/* Treatment Details & Notes */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-300">Treatment Plan & Details</label>
+                <label className="block text-xs font-bold text-slate-700">Treatment Plan & Details</label>
                 <textarea
                   rows={3}
                   required
+                  spellCheck={false}
                   value={treatmentDetails}
                   onChange={(e) => setTreatmentDetails(e.target.value)}
-                  className="w-full p-3 rounded-xl glass-input text-white text-xs focus:outline-none"
+                  className="w-full p-3 rounded-xl border border-secondary bg-white text-slate-900 font-medium text-xs focus:outline-none focus:border-primary placeholder:text-slate-400"
                   placeholder="Procedures, counseling, dietary recommendations..."
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-300">Clinical Notes</label>
+                <label className="block text-xs font-bold text-slate-700">Clinical Notes</label>
                 <textarea
                   rows={3}
+                  spellCheck={false}
                   value={clinicalNotes}
                   onChange={(e) => setClinicalNotes(e.target.value)}
-                  className="w-full p-3 rounded-xl glass-input text-white text-xs focus:outline-none"
+                  className="w-full p-3 rounded-xl border border-secondary bg-white text-slate-900 font-medium text-xs focus:outline-none focus:border-primary placeholder:text-slate-400"
                   placeholder="Internal observations and clinical follow-up advice..."
                 />
               </div>
