@@ -37,7 +37,8 @@ export const BookAppointmentFlowPage: React.FC = () => {
   // Form State
   const [selectedHospitalId, setSelectedHospitalId] = useState<string>(preselectedHospitalId || '');
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>(preselectedDoctorId || '');
-  const [selectedPatientId, setSelectedPatientId] = useState<string>('');
+  // Default to '+ Enter New Patient' ('new') so patients enter their own custom booking data directly
+  const [selectedPatientId, setSelectedPatientId] = useState<string>('new');
   const [newPatientName, setNewPatientName] = useState<string>('');
   const [newPatientAge, setNewPatientAge] = useState<string>('');
   const [newPatientGender, setNewPatientGender] = useState<string>('other');
@@ -154,17 +155,12 @@ export const BookAppointmentFlowPage: React.FC = () => {
     return doc.hospitalId === selectedHospitalId || (doc.hospital && doc.hospital.id === selectedHospitalId);
   });
 
-  // Keep selectedPatientId valid with logged in patient or first patient
-  // Initialize selectedPatientId on load, but don't overwrite if it already has a value
+  // Keep selectedPatientId valid (default to 'new' so patients input their own booking data)
   useEffect(() => {
     if (!selectedPatientId) {
-      if (currentPatient?.id) {
-        setSelectedPatientId(currentPatient.id);
-      } else if (patients.length > 0) {
-        setSelectedPatientId(patients[0].id);
-      }
+      setSelectedPatientId('new');
     }
-  }, [currentPatient, patients, selectedPatientId]);
+  }, [currentPatient?.id, patients]);
 
   const handleConfirmBooking = async (e: React.FormEvent) => {
     e.preventDefault();
