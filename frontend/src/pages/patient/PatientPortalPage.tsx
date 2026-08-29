@@ -33,11 +33,33 @@ export const PatientPortalPage: React.FC = () => {
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(false);
 
+  // Dynamic full name from authenticated patient profile
+  const dynamicAuthenticatedName = (() => {
+    if (currentPatient?.firstName) {
+      return `${currentPatient.firstName} ${currentPatient.lastName || ''}`.trim();
+    }
+    if (currentUser?.firstName || currentUser?.lastName) {
+      const full = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim();
+      if (full.toLowerCase() !== 'patient user' && full.toLowerCase() !== 'user') return full;
+    }
+    if (currentUser?.email) {
+      const emailPrefix = currentUser.email.split('@')[0];
+      return emailPrefix.replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+    return '';
+  })();
+
   // Profile completion form state
   const [completingProfile, setCompletingProfile] = useState(false);
-  const [profileName, setProfileName] = useState(currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim() : '');
-  const [profilePhone, setProfilePhone] = useState(currentUser?.phone || '');
-  const [profileBloodGroup, setProfileBloodGroup] = useState('O+');
+  const [profileName, setProfileName] = useState(dynamicAuthenticatedName);
+  const [profilePhone, setProfilePhone] = useState(currentPatient?.phone || currentUser?.phone || '');
+  const [profileBloodGroup, setProfileBloodGroup] = useState<any>(currentPatient?.bloodGroup || 'O+');
+
+  useEffect(() => {
+    if (dynamicAuthenticatedName && !profileName) {
+      setProfileName(dynamicAuthenticatedName);
+    }
+  }, [dynamicAuthenticatedName]);
 
   const fetchPortalData = async (targetPatientId: string) => {
     setLoadingData(true);
