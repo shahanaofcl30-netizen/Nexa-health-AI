@@ -59,9 +59,7 @@ export const AppointmentsPage: React.FC = () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const isPatient = activeRole === 'patient' || currentUser?.role === 'patient';
-      const effectivePatientId = isPatient ? (currentPatient?.id || currentUser?.id) : undefined;
-      const aptUrl = effectivePatientId ? `/appointments?patientId=${effectivePatientId}` : '/appointments';
+      const aptUrl = '/appointments';
 
       const [aptRes, patRes, docRes] = await Promise.all([
         api.get(aptUrl),
@@ -72,6 +70,7 @@ export const AppointmentsPage: React.FC = () => {
       setPatients(patRes.data);
       setDoctors(docRes.data);
 
+      const effectivePatientId = currentPatient?.id || currentUser?.id;
       const defaultPatId = effectivePatientId || (patRes.data.length > 0 ? patRes.data[0].id : '');
       if (defaultPatId && !formData.patientId) {
         setFormData((prev) => ({ ...prev, patientId: defaultPatId }));

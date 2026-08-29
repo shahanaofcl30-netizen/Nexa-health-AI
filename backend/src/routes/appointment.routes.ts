@@ -27,12 +27,20 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
 
   // Enforce patient-level isolation: if caller is a patient, resolve all patient profiles for this user
   if (req.user && req.user.role === 'patient') {
-    const callerPatientIds = store.patients
-      .filter((p) => (p.userId && p.userId === req.user!.id) || (p.email && p.email.toLowerCase() === req.user!.email.toLowerCase()) || p.id === req.user!.id)
-      .map((p) => p.id);
+    const userEmail = (req.user.email || '').toLowerCase();
+    const userFullName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim().toLowerCase();
+    const callerPatients = store.patients.filter(
+      (p) => (p.userId && p.userId === req.user!.id) || (p.email && p.email.toLowerCase() === userEmail) || p.id === req.user!.id
+    );
+    const callerPatientIds = callerPatients.map((p) => p.id);
     callerPatientIds.push(req.user.id);
     
-    results = results.filter((a) => callerPatientIds.includes(a.patientId) || (a.patient && callerPatientIds.includes(a.patient.id)));
+    results = results.filter((a) => {
+      if (callerPatientIds.includes(a.patientId)) return true;
+      if (a.patient && callerPatientIds.includes(a.patient.id)) return true;
+      if (a.patientName && userFullName && a.patientName.trim().toLowerCase() === userFullName) return true;
+      return false;
+    });
   } else if (patientId) {
     results = results.filter((a) => a.patientId === patientId);
   }
