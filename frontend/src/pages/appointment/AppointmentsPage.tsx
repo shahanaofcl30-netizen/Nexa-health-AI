@@ -125,9 +125,10 @@ export const AppointmentsPage: React.FC = () => {
   const handleStartConsultation = async (appointmentId: string) => {
     try {
       await api.put(`/appointments/${appointmentId}/status`, { status: 'in_consultation' });
-      navigate(`/consultations/${appointmentId}`);
     } catch (err) {
-      console.error('Failed to start consultation:', err);
+      console.warn('Status update fallback:', err);
+    } finally {
+      navigate(`/consultations/${appointmentId}`);
     }
   };
 
