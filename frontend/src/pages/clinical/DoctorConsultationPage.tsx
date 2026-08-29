@@ -39,10 +39,10 @@ export const DoctorConsultationPage: React.FC = () => {
   const [generatedPrescription, setGeneratedPrescription] = useState<any>(null);
 
   // Treatment Form State
-  const [symptoms, setSymptoms] = useState('Patient presents with mild morning dizziness and lightheadedness when rising rapidly; denies chest pain or palpitations.');
-  const [diagnosis, setDiagnosis] = useState('Essential (primary) hypertension, Stage 1 (ICD-10 I10); Orthostatic benign lightheadedness.');
-  const [treatmentDetails, setTreatmentDetails] = useState('Cardiovascular assessment and ECG completed. Blood pressure normalized at 122/80 mmHg. Continued Lisinopril therapy with fluid hydration optimization.');
-  const [clinicalNotes, setClinicalNotes] = useState('Patient advised on hydration during warm weather. Penicillin allergy confirmed and documented.');
+  const [symptoms, setSymptoms] = useState('');
+  const [diagnosis, setDiagnosis] = useState('');
+  const [treatmentDetails, setTreatmentDetails] = useState('');
+  const [clinicalNotes, setClinicalNotes] = useState('');
   const [followUpDate, setFollowUpDate] = useState('2026-09-24');
 
   // Medicines Prescription Items
@@ -61,16 +61,30 @@ export const DoctorConsultationPage: React.FC = () => {
     const fetchQueue = async () => {
       setLoading(true);
       try {
-        const res = await api.get('/appointments');
-        setAppointments(res.data);
+        const [aptRes, patRes] = await Promise.all([
+          api.get('/appointments'),
+          api.get('/patients')
+        ]);
 
-        const targetId = appointmentId || (res.data.length > 0 ? res.data[0].id : '');
+        const validAppointments = (aptRes.data || []).filter((apt: any) => {
+          const patientObj = (patRes.data || []).find((p: any) => p.id === apt.patientId) || apt.patient;
+          const patientFullName = patientObj ? `${patientObj.firstName || ''} ${patientObj.lastName || ''}`.trim() : (apt.patientName || '');
+          const lower = patientFullName.toLowerCase();
+          return lower !== 'patient' && lower !== 'patient name' && lower !== '' && lower !== 'undefined';
+        });
+
+        setAppointments(validAppointments);
+
+        const targetId = appointmentId || (validAppointments.length > 0 ? validAppointments[0].id : '');
         setSelectedAppointmentId(targetId);
 
         if (targetId) {
           const detailRes = await api.get(`/appointments/${targetId}`);
-          setAppointment(detailRes.data);
-          setPatient(detailRes.data.patient);
+          const aptData = detailRes.data;
+          setAppointment(aptData);
+          const resolvedPatient = (patRes.data || []).find((p: any) => p.id === aptData.patientId) || aptData.patient;
+          setPatient(resolvedPatient);
+          setSymptoms(aptData.reason || '');
         }
       } catch (err) {
         console.error('Failed to load consultation queue:', err);
@@ -85,9 +99,14 @@ export const DoctorConsultationPage: React.FC = () => {
   const handleSelectAppointment = async (id: string) => {
     setSelectedAppointmentId(id);
     try {
-      const res = await api.get(`/appointments/${id}`);
-      setAppointment(res.data);
-      setPatient(res.data.patient);
+      const detailRes = await api.get(`/appointments/${id}`);
+      const aptData = detailRes.data;
+      setAppointment(aptData);
+      
+      const patRes = await api.get('/patients');
+      const resolvedPatient = (patRes.data || []).find((p: any) => p.id === aptData.patientId) || aptData.patient;
+      setPatient(resolvedPatient);
+      setSymptoms(aptData.reason || '');
     } catch (err) {
       console.error('Failed to load appointment details:', err);
     }
@@ -280,22 +299,25 @@ export const DoctorConsultationPage: React.FC = () => {
           <div className="p-4 rounded-3xl glass-card border border-slate-800 space-y-2">
             <span className="text-[10px] font-bold uppercase text-slate-400">Consultation Queue</span>
             <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-              {appointments.map((apt) => (
-                <div
-                  key={apt.id}
-                  onClick={() => handleSelectAppointment(apt.id)}
-                  className={`p-2.5 rounded-xl text-xs cursor-pointer transition-all flex items-center justify-between ${
-                    selectedAppointmentId === apt.id
-                      ? 'bg-brand-500/20 text-brand-300 border border-brand-500/40 font-bold'
-                      : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-800'
-                  }`}
-                >
-                  <span className="truncate">{apt.patient?.firstName} {apt.patient?.lastName}</span>
-                  <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-slate-950">
-                    {apt.status}
-                  </span>
-                </div>
-              ))}
+              {appointments.map((apt) => {
+                const patientName = apt.patient ? `${apt.patient.firstName || ''} ${apt.patient.lastName || ''}`.trim() : (apt.patientName || 'Patient');
+                return (
+                  <div
+                    key={apt.id}
+                    onClick={() => handleSelectAppointment(apt.id)}
+                    className={`p-2.5 rounded-xl text-xs cursor-pointer transition-all flex items-center justify-between ${
+                      selectedAppointmentId === apt.id
+                        ? 'bg-brand-500/20 text-brand-300 border border-brand-500/40 font-bold'
+                        : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-800'
+                    }`}
+                  >
+                    <span className="truncate">{patientName}</span>
+                    <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-slate-950">
+                      {apt.status}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
