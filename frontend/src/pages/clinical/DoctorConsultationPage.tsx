@@ -319,14 +319,15 @@ export const DoctorConsultationPage: React.FC = () => {
             {/* Symptoms & Diagnosis */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-300">Presenting Symptoms</label>
+                <label className="block text-xs font-bold text-slate-300">
+                  Presenting Symptoms <span className="text-[10px] text-brand-400 font-normal">(Reported by Patient - Read Only)</span>
+                </label>
                 <textarea
                   rows={3}
-                  required
-                  value={symptoms}
-                  onChange={(e) => setSymptoms(e.target.value)}
-                  className="w-full p-3 rounded-xl glass-input text-white text-xs focus:outline-none"
-                  placeholder="Record symptoms reported by patient..."
+                  readOnly
+                  value={appointment?.reason || symptoms || 'No symptoms reported by patient'}
+                  className="w-full p-3 rounded-xl glass-input text-slate-300 bg-slate-900/80 border border-slate-700/60 text-xs focus:outline-none cursor-not-allowed select-none"
+                  placeholder="Patient reported symptoms..."
                 />
               </div>
 
