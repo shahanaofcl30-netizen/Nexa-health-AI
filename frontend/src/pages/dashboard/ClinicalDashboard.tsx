@@ -48,7 +48,13 @@ export const ClinicalDashboard: React.FC = () => {
         ]);
 
         setPatients(patientsRes.data);
-        setAppointments(appointmentsRes.data);
+        const validAppointments = (appointmentsRes.data || []).filter((apt: any) => {
+          const patient = (patientsRes.data || []).find((p: any) => p.id === apt.patientId) || apt.patient;
+          const patientFullName = patient ? `${patient.firstName || ''} ${patient.lastName || ''}`.trim() : (apt.patientName || '');
+          const lower = patientFullName.toLowerCase();
+          return lower !== 'patient' && lower !== 'patient name' && lower !== '' && lower !== 'undefined';
+        });
+        setAppointments(validAppointments);
         setAlerts(alertsRes.data);
         setAgentTasks(tasksRes.data);
         setMetrics(metricsRes.data);
