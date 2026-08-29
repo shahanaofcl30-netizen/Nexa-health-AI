@@ -561,14 +561,24 @@ export const DoctorConsultationPage: React.FC = () => {
                   <div className="grid grid-cols-2 gap-6 mb-6 text-sm">
                     <div className="space-y-1">
                       <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Patient Details</p>
-                      <p className="font-semibold text-white">{generatedPrescription.patient.firstName} {generatedPrescription.patient.lastName}</p>
-                      <p className="text-slate-400 text-xs">DOB: {generatedPrescription.patient.dateOfBirth}</p>
-                      <p className="text-slate-400 text-xs">Gender: {generatedPrescription.patient.gender}</p>
+                      <p className="font-semibold text-white">
+                        {(() => {
+                          const p = generatedPrescription.patient;
+                          const name = `${p?.firstName || ''} ${p?.lastName || ''}`.trim() || p?.name || appointment?.patientName;
+                          return name && name !== 'Patient' && name !== 'undefined' ? name : 'Not provided';
+                        })()}
+                      </p>
+                      <p className="text-slate-400 text-xs">
+                        DOB: {generatedPrescription.patient?.dateOfBirth && generatedPrescription.patient.dateOfBirth !== '1995-01-01' ? generatedPrescription.patient.dateOfBirth : (generatedPrescription.patient?.dateOfBirth || 'Not provided')}
+                      </p>
+                      <p className="text-slate-400 text-xs capitalize">
+                        Gender: {generatedPrescription.patient?.gender && generatedPrescription.patient.gender !== 'undisclosed' ? generatedPrescription.patient.gender : 'Not provided'}
+                      </p>
                     </div>
                     <div className="space-y-1 text-right">
                       <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Prescribing Physician</p>
-                      <p className="font-semibold text-white">Dr. {generatedPrescription.doctor?.firstName || ''} {generatedPrescription.doctor?.lastName || 'Physician'}</p>
-                      <p className="text-slate-400 text-xs">{generatedPrescription.doctor?.specialty || 'General Practice'}</p>
+                      <p className="font-semibold text-white">Dr. {generatedPrescription.doctor?.firstName || ''} {generatedPrescription.doctor?.lastName || 'Sophia Chen'}</p>
+                      <p className="text-slate-400 text-xs">{generatedPrescription.doctor?.specialty || appointment?.doctor?.specialization || 'Attending Physician'}</p>
                     </div>
                   </div>
                   
