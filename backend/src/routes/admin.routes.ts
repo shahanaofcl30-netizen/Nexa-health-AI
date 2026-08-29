@@ -70,34 +70,12 @@ router.get('/documents', async (req: AuthenticatedRequest, res: Response) => {
   const { patientId } = req.query;
   let docs = [...store.documents];
 
-  try {
-    const treatmentsSnapshot = await firebaseAdminDb.collection('treatments').get();
-    treatmentsSnapshot.forEach((doc: any) => {
-      const t = doc.data();
-      const docId = `doc-${t.id}`;
-      if (!docs.find((d: any) => d.id === docId)) {
-        docs.push({
-          id: docId,
-          patientId: t.patientId,
-          title: `Consultation: ${t.diagnosis}`,
-          category: 'clinical',
-          description: `Official Medical Record for consultation regarding ${t.diagnosis}. Notes: ${t.clinicalNotes || 'No additional notes'}`,
-          fileUrl: '/documents/clinical_consultation_record.pdf',
-          version: 1,
-          createdAt: t.createdAt,
-        });
-      }
-    });
-  } catch (err) {
-    console.error('Failed to fetch treatments for documents:', err);
-  }
-
   if (patientId) docs = docs.filter((d: any) => d.patientId === patientId);
 
   const populated = docs.map((d: any) => ({
     ...d,
     patient: store.patients.find((p) => p.id === d.patientId),
-  })).filter((d: any) => d.patient?.firstName !== 'Emily' && d.patient?.lastName !== 'Davis' && d.patientId !== '50000000-0000-0000-0000-000000000001');
+  })).filter((d: any) => d.patient && d.patient.firstName !== 'Emily' && d.patient.lastName !== 'Davis' && d.patientId !== '50000000-0000-0000-0000-000000000001');
 
   res.json(populated);
 });
