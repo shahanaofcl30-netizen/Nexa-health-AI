@@ -80,9 +80,10 @@ export const BookAppointmentFlowPage: React.FC = () => {
 
       let scheduleForDay: any = null;
       if (targetDoctor?.availabilitySchedule && targetDoctor.availabilitySchedule.length > 0) {
-        scheduleForDay = targetDoctor.availabilitySchedule.find(s => s.dayOfWeek === dayOfWeek);
-      } else {
-        scheduleForDay = { startTime: '00:00', endTime: '23:59' };
+        scheduleForDay = targetDoctor.availabilitySchedule.find(s => s.dayOfWeek === dayOfWeek) || targetDoctor.availabilitySchedule[0];
+      }
+      if (!scheduleForDay) {
+        scheduleForDay = { startTime: '08:00', endTime: '18:00' };
       }
 
       try {
@@ -97,24 +98,17 @@ export const BookAppointmentFlowPage: React.FC = () => {
           }).filter(Boolean);
 
         const updatedSlots = hospitalSlots.map((slotTime: string) => {
-          let isDoctorAvailable = false;
-          if (scheduleForDay) {
-            isDoctorAvailable = slotTime >= scheduleForDay.startTime && slotTime < scheduleForDay.endTime;
-          }
           const isBooked = bookedTimes.includes(slotTime);
-          return { time: slotTime, available: isDoctorAvailable && !isBooked };
+          return { time: slotTime, available: !isBooked };
         });
 
         setAvailableSlots(updatedSlots);
       } catch (err) {
         console.error('Failed to fetch slots:', err);
-        const fallbackSlots = hospitalSlots.map((slotTime: string) => {
-          let isDoctorAvailable = false;
-          if (scheduleForDay) {
-            isDoctorAvailable = slotTime >= scheduleForDay.startTime && slotTime < scheduleForDay.endTime;
-          }
-          return { time: slotTime, available: isDoctorAvailable };
-        });
+        const fallbackSlots = hospitalSlots.map((slotTime: string) => ({
+          time: slotTime,
+          available: true,
+        }));
         setAvailableSlots(fallbackSlots);
       }
     };
