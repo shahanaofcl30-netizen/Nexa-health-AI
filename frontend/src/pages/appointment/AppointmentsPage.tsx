@@ -244,7 +244,7 @@ export const AppointmentsPage: React.FC = () => {
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
                       <h3 className="font-bold text-base text-slate-900">
-                        {patient ? `${patient.firstName} ${patient.lastName}` : 'Patient'}
+                        {patient ? `${patient.firstName} ${patient.lastName || ''}`.trim() : (apt.patientName || 'Patient')}
                       </h3>
                       <span className="text-xs font-mono text-slate-500">({patient?.mrn || 'NX-2026'})</span>
                       <span
