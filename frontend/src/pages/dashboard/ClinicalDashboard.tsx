@@ -180,19 +180,22 @@ export const ClinicalDashboard: React.FC = () => {
               ) : (
                 appointments.map((apt) => {
                   const patient = patients.find((p) => p.id === apt.patientId) || apt.patient;
+                  const patientFullName = patient ? `${patient.firstName} ${patient.lastName || ''}`.trim() : (apt.patientName || 'Patient');
+                  const initials = patientFullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'PT';
+
                   return (
                     <div
                       key={apt.id}
-                      className="p-3.5 rounded-xl bg-secondary/10 border border-secondary hover:shadow-sm flex items-center justify-between transition-all"
+                      className="p-3.5 rounded-xl bg-secondary/10 border border-secondary hover:bg-secondary/20 transition-all flex items-center justify-between"
                     >
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-xl bg-white border border-secondary flex items-center justify-center font-bold text-sm text-primary">
-                          {patient ? `${patient.firstName?.[0]}${patient.lastName?.[0]}` : 'PT'}
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary font-bold text-xs flex items-center justify-center">
+                          {initials}
                         </div>
                         <div>
                           <div className="flex items-center space-x-2">
                             <p className="font-bold text-sm text-slate-900">
-                              {patient ? `${patient.firstName} ${patient.lastName}` : 'Patient Name'}
+                              {patientFullName}
                             </p>
                             <span className="text-xs font-mono text-slate-500">
                               {patient?.mrn || 'NX-2026'}

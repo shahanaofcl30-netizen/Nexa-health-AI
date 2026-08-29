@@ -4,7 +4,7 @@ import { store } from '../db/store';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { AgentRuntime } from '../agents/core/AgentRuntime';
 import { firebaseAdminDb } from '../config/firebase';
-import { Appointment, AppointmentStatus, AppointmentType, TriageLevel } from '../types/shared';
+import { Appointment, AppointmentStatus, AppointmentType, TriageLevel, Patient } from '../types/shared';
 
 const router = Router();
 
@@ -60,7 +60,28 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
 
   // Populate patient, doctor, and hospital information
   const populated = results.map((apt) => {
-    const patient = store.patients.find((p) => p.id === apt.patientId);
+    let patient = store.patients.find((p) => p.id === apt.patientId) || apt.patient;
+    if (!patient && apt.patientName) {
+      const parts = apt.patientName.trim().split(/\s+/);
+      patient = {
+        id: apt.patientId || uuidv4(),
+        mrn: `MRN-${Math.abs(apt.id.split('-')[0].charCodeAt(0) * 1000 + 520)}`,
+        firstName: parts[0] || 'Patient',
+        lastName: parts.slice(1).join(' ') || '',
+        dateOfBirth: '1995-01-01',
+        gender: 'undisclosed',
+        phone: '',
+        email: '',
+        address: '',
+        emergencyContactName: '',
+        emergencyContactPhone: '',
+        emergencyContactRelation: '',
+        allergies: [],
+        chronicConditions: [],
+        createdAt: apt.createdAt || new Date().toISOString(),
+        updatedAt: apt.updatedAt || new Date().toISOString(),
+      } as unknown as Patient;
+    }
     const doctor = store.doctors.find((d) => d.id === apt.doctorId);
     const doctorUser = doctor ? store.users.find((u) => u.id === doctor.userId) : undefined;
     const hospital = store.hospitals.find((h) => h.id === apt.hospitalId) || (doctor ? store.hospitals.find((h) => h.id === doctor.hospitalId) : undefined);
