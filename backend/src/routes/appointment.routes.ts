@@ -103,14 +103,16 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
   } = req.body;
 
 
-  if ((!existingPatientId && !isNewPatient) || !doctorId || !hospitalId || !dateTime || !reason) {
-    return res.status(400).json({ error: 'patientId, hospitalId, doctorId, dateTime, and reason are required' });
-  }
-
-  // 1. Validate Hospital <-> Doctor Relationship
-  // 1. Validate Hospital <-> Doctor Relationship (Graceful fallback)
-  const targetHospital = store.hospitals.find(h => h.id === hospitalId) || store.hospitals[0];
+  let resolvedHospitalId = hospitalId;
   const targetDoctor = store.doctors.find(d => d.id === doctorId) || store.doctors[0];
+  if (!resolvedHospitalId && targetDoctor) {
+    resolvedHospitalId = targetDoctor.hospitalId || store.hospitals[0]?.id;
+  }
+  const targetHospital = store.hospitals.find(h => h.id === resolvedHospitalId) || store.hospitals[0];
+
+  if ((!existingPatientId && !isNewPatient) || !doctorId || !dateTime || !reason) {
+    return res.status(400).json({ error: 'patientId, doctorId, dateTime, and reason are required' });
+  }
 
   // 3. Double Booking Check (Firestore + Store)
   let isDoubleBooked = store.appointments.some(a => a.doctorId === doctorId && a.dateTime === dateTime && a.status !== 'cancelled');
