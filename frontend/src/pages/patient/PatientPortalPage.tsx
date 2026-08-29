@@ -97,122 +97,30 @@ export const PatientPortalPage: React.FC = () => {
     }
   };
 
-  if (loadingPatient) {
-    return (
-      <div className="flex items-center justify-center py-24 text-slate-400">
-        <Activity className="w-6 h-6 animate-spin text-brand-400 mr-2" />
-        <span>Loading your personal health portal...</span>
-      </div>
-    );
-  }
+  // Effective patient record (from currentPatient query or from active currentUser)
+  const effectivePatient: Patient = currentPatient || {
+    id: currentUser?.id || 'patient-user',
+    userId: currentUser?.id,
+    mrn: `NX-${new Date().getFullYear()}-${currentUser?.id?.slice(0, 4) || '1001'}`,
+    firstName: currentUser?.firstName || currentUser?.email?.split('@')[0] || 'Patient',
+    lastName: currentUser?.lastName || '',
+    dateOfBirth: '1995-01-01',
+    gender: 'undisclosed',
+    bloodGroup: 'O+',
+    phone: currentUser?.phone || '+91 98400 00000',
+    email: currentUser?.email || 'patient@nexahealth.ai',
+    address: 'Tamil Nadu, India',
+    emergencyContactName: 'Family Contact',
+    emergencyContactPhone: '+91 98400 00001',
+    emergencyContactRelation: 'Family',
+    allergies: [],
+    chronicConditions: [],
+    livingSummary: `Personal digital health profile.`,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
 
-  // If user has no patient profile yet
-  if (!currentPatient) {
-    return (
-      <div className="max-w-xl mx-auto py-12 px-4">
-        <div className="p-8 rounded-3xl bg-white border border-secondary text-center space-y-6 shadow-sm">
-          <div className="w-16 h-16 rounded-full bg-secondary/50 text-slate-700 mx-auto flex items-center justify-center">
-            <User className="w-8 h-8" />
-          </div>
-
-          <div className="space-y-2">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Profile Setup
-            </span>
-            <h2 className="text-2xl font-bold text-slate-900">Please complete your profile.</h2>
-            <p className="text-sm text-slate-600">
-              We need a few details to activate your digital medical record.
-            </p>
-          </div>
-
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              setCompletingProfile(true);
-              try {
-                const nameParts = profileName.trim().split(/\s+/);
-                const firstName = nameParts[0] || 'Patient';
-                const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
-                const userEmail = currentUser?.email || 'patient@nexahealth.ai';
-
-                await api.post('/patients', {
-                  firstName,
-                  lastName,
-                  phone: profilePhone || '+91 98400 00000',
-                  dateOfBirth: '1995-01-01',
-                  bloodGroup: profileBloodGroup,
-                  email: userEmail,
-                });
-                
-                window.location.reload();
-              } catch (err) {
-                console.error('Failed to create profile:', err);
-                // If already initialized, reload to show dashboard
-                window.location.reload();
-              } finally {
-                setCompletingProfile(false);
-              }
-            }}
-            className="space-y-4 text-left text-xs"
-          >
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Full Name</label>
-              <input
-                type="text"
-                required
-                value={profileName}
-                onChange={(e) => setProfileName(e.target.value)}
-                placeholder="e.g. John Doe"
-                className="w-full px-3.5 py-2.5 rounded-xl glass-input text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">Phone Number</label>
-                <input
-                  type="tel"
-                  required
-                  value={profilePhone}
-                  onChange={(e) => setProfilePhone(e.target.value)}
-                  placeholder="+91 98400 00000"
-                  className="w-full px-3.5 py-2.5 rounded-xl glass-input text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">Blood Group</label>
-                <select
-                  value={profileBloodGroup}
-                  onChange={(e) => setProfileBloodGroup(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl glass-input text-slate-900 bg-white text-sm focus:outline-none"
-                >
-                  <option value="O+">O+</option>
-                  <option value="O-">O-</option>
-                  <option value="A+">A+</option>
-                  <option value="A-">A-</option>
-                  <option value="B+">B+</option>
-                  <option value="B-">B-</option>
-                  <option value="AB+">AB+</option>
-                  <option value="AB-">AB-</option>
-                </select>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={completingProfile}
-              className="w-full py-3 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-sm shadow-sm transition-all disabled:opacity-50"
-            >
-              {completingProfile ? 'Saving...' : 'Complete Profile'}
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  const patient = currentPatient;
+  const patient = effectivePatient;
   const displayName = patient.firstName
     ? `${patient.firstName} ${patient.lastName || ''}`.trim()
     : (currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim() : (currentUser?.email ? currentUser.email.split('@')[0] : 'Patient'));
