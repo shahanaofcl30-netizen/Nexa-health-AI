@@ -13,7 +13,16 @@ const router = Router();
 router.get('/', (req: AuthenticatedRequest, res: Response) => {
   const { patientId, doctorId, hospitalId } = req.query;
 
-  let results = store.prescriptions;
+  let results = store.prescriptions.filter((p) => {
+    // Filter out dummy/placeholder prescriptions
+    const isPlaceholderMedicine = p.items?.some(item => {
+      const name = (item.medicationName || '').toLowerCase();
+      return name.includes('no medication') || name.includes('no medicine') || name.includes('(n/a)') || name === 'n/a';
+    });
+    if (isPlaceholderMedicine) return false;
+    return true;
+  });
+
   if (patientId) results = results.filter((p) => p.patientId === patientId);
   if (doctorId) results = results.filter((p) => p.doctorId === doctorId);
   if (hospitalId) results = results.filter((p) => p.hospitalId === hospitalId);

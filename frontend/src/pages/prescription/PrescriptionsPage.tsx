@@ -63,7 +63,15 @@ export const PrescriptionsPage: React.FC = () => {
         api.get('/prescriptions/medications'),
         api.get('/pharmacies'),
       ]);
-      setPrescriptions(rxRes.data);
+      const validPrescriptions = (rxRes.data || []).filter((rx: any) => {
+        const hasPlaceholder = rx.items?.some((i: any) => {
+          const name = (i.medicationName || '').toLowerCase();
+          return name.includes('no medication') || name.includes('no medicine') || name.includes('(n/a)') || name === 'n/a';
+        });
+        return !hasPlaceholder;
+      });
+
+      setPrescriptions(validPrescriptions);
       setPatients(patRes.data);
       setMedications(medRes.data);
       setPharmacies(pharmRes.data);
