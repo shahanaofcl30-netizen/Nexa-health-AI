@@ -83,7 +83,7 @@ export const ClinicalDashboard: React.FC = () => {
               </span>
             </div>
             <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight font-['Plus_Jakarta_Sans']">
-              Good morning, Dr. {currentUser?.firstName || currentUser?.lastName ? `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() : currentUser?.email ? currentUser.email.split('@')[0] : 'Doctor'}
+              Good morning, {currentUser?.firstName || currentUser?.lastName ? `Dr. ${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() : currentUser?.email ? currentUser.email.split('@')[0] : 'Dr. Practitioner'}
             </h1>
             <p className="text-sm text-slate-600 max-w-2xl">
               <span className="text-primary font-semibold">{agentTasks.length} active tasks</span> running today.

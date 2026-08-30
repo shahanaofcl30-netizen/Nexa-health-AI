@@ -38,11 +38,22 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMedAI, onOpenAgentTasks })
     ? currentPatient.lastName
     : currentUser?.lastName;
 
-  const displayName = rawFirstName || rawLastName
-    ? `${rawFirstName || ''} ${rawLastName || ''}`.trim()
-    : currentUser?.email
-    ? currentUser.email.split('@')[0]
-    : 'User';
+  const displayName = (() => {
+    if (rawFirstName || rawLastName) {
+      const full = `${rawFirstName || ''} ${rawLastName || ''}`.trim();
+      if (full.toLowerCase() !== 'user' && full.toLowerCase() !== 'patient user' && full.toLowerCase() !== 'doctor user') {
+        return full;
+      }
+    }
+    if ((currentUser as any)?.full_name) {
+      return (currentUser as any).full_name;
+    }
+    if (currentUser?.email) {
+      const emailPrefix = currentUser.email.split('@')[0];
+      return emailPrefix;
+    }
+    return 'User';
+  })();
 
   const avatarInitial = (displayName?.[0] || currentUser?.email?.[0] || 'U').toUpperCase();
   const roleLabel = currentUser?.role ? currentUser.role.replace('_', ' ') : activeRole ? activeRole.replace('_', ' ') : 'USER';
