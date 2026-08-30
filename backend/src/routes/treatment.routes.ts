@@ -9,10 +9,28 @@ import { CLINICAL_DISCLAIMER } from '../agents/core/SafetyGuardrails';
 const router = Router();
 
 // GET /api/treatments - List treatments with filtering
-router.get('/', (req: AuthenticatedRequest, res: Response) => {
+router.get('/', async (req: AuthenticatedRequest, res: Response) => {
   const { patientId, doctorId, hospitalId, appointmentId } = req.query;
 
-  let results = [...store.treatments];
+  const treatmentMap = new Map<string, Treatment>();
+
+  store.treatments.forEach((t) => {
+    treatmentMap.set(t.id, t);
+  });
+
+  try {
+    if (firebaseAdminDb) {
+      const snap = await firebaseAdminDb.collection('treatments').get();
+      snap.docs.forEach((doc) => {
+        const data = doc.data() as Treatment;
+        if (!treatmentMap.has(data.id || doc.id)) {
+          treatmentMap.set(data.id || doc.id, { ...data, id: data.id || doc.id });
+        }
+      });
+    }
+  } catch (e) {}
+
+  let results = Array.from(treatmentMap.values());
 
   if (patientId) results = results.filter((t) => t.patientId === patientId);
   if (doctorId) results = results.filter((t) => t.doctorId === doctorId);
@@ -20,7 +38,11 @@ router.get('/', (req: AuthenticatedRequest, res: Response) => {
   if (appointmentId) results = results.filter((t) => t.appointmentId === appointmentId);
 
   const populated = results.map((treatment) => {
-    const patient = store.patients.find((p) => p.id === treatment.patientId);
+    let patient = store.patients.find((p) => p.id === treatment.patientId || p.userId === treatment.patientId);
+    if (!patient && treatment.appointmentId) {
+      const apt = store.appointments.find((a) => a.id === treatment.appointmentId);
+      if (apt?.patient) patient = apt.patient;
+    }
     const doctor = store.doctors.find((d) => d.id === treatment.doctorId);
     const doctorUser = doctor ? store.users.find((u) => u.id === doctor.userId) : undefined;
     const hospital = store.hospitals.find((h) => h.id === treatment.hospitalId);
