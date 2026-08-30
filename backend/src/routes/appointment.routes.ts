@@ -140,6 +140,12 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
     reason,
     notes,
     status = 'confirmed',
+    age,
+    dateOfBirth,
+    gender,
+    phone,
+    email,
+    address,
   } = req.body;
 
 
@@ -185,18 +191,24 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
   let patient;
 
   if (isNewPatient && patientName) {
-    const parts = patientName.split(' ');
+    const parts = patientName.trim().split(/\s+/);
+    let resolvedDob = dateOfBirth;
+    if (!resolvedDob && age) {
+      const birthYear = new Date().getFullYear() - parseInt(age, 10);
+      resolvedDob = `${birthYear}-01-01`;
+    }
+
     const newPatient = {
       id: uuidv4(),
       userId: req.user?.id || undefined,
       mrn: `MRN-${Math.floor(Math.random() * 90000) + 10000}`,
-      firstName: parts[0],
+      firstName: parts[0] || 'Patient',
       lastName: parts.length > 1 ? parts.slice(1).join(' ') : '',
-      dateOfBirth: '1990-01-01', // Default required field
-      gender: 'other',
-      phone: '',
-      email: '',
-      address: '',
+      dateOfBirth: resolvedDob || '1995-01-01',
+      gender: gender && gender !== 'other' ? gender : (gender || 'undisclosed'),
+      phone: phone || '',
+      email: email || (req.user?.email || ''),
+      address: address || '',
       bloodGroup: 'O+',
       emergencyContactName: '',
       emergencyContactPhone: '',
