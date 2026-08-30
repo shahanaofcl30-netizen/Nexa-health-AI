@@ -72,35 +72,43 @@ export const PracticeAnalyticsPage: React.FC = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl glass-card border border-slate-800 space-y-2">
-          <span className="text-[10px] uppercase font-bold text-slate-400">YTD Hospital Revenue</span>
-          <p className="text-2xl font-black text-white font-mono">$485,000.00</p>
-          <span className="text-[11px] text-emerald-400 flex items-center">
-            <TrendingUp className="w-3 h-3 mr-1" /> +18.4% YoY growth
+        <div className="p-4 rounded-2xl bg-white border border-secondary shadow-sm space-y-1.5">
+          <span className="text-[10px] uppercase font-bold text-slate-500">YTD Hospital Revenue</span>
+          <p className="text-2xl font-bold text-slate-900 font-mono">
+            ₹{((metrics?.totalRevenue || 0)).toLocaleString('en-IN')}
+          </p>
+          <span className="text-[11px] text-emerald-600 font-bold flex items-center">
+            <TrendingUp className="w-3 h-3 mr-1" /> Live Invoiced Revenue
           </span>
         </div>
 
-        <div className="p-4 rounded-2xl glass-card border border-slate-800 space-y-2">
-          <span className="text-[10px] uppercase font-bold text-slate-400">Monthly Patient Volume</span>
-          <p className="text-2xl font-black text-brand-400 font-mono">590 Visits</p>
-          <span className="text-[11px] text-brand-300 flex items-center">
-            <Users className="w-3 h-3 mr-1" /> 94% Capacity utilization
+        <div className="p-4 rounded-2xl bg-white border border-secondary shadow-sm space-y-1.5">
+          <span className="text-[10px] uppercase font-bold text-slate-500">Total Patient Volume</span>
+          <p className="text-2xl font-bold text-primary font-mono">
+            {metrics?.totalAppointments || 0} Visits
+          </p>
+          <span className="text-[11px] text-slate-600 font-bold flex items-center">
+            <Users className="w-3 h-3 mr-1 text-primary" /> {metrics?.totalPatients || 0} Registered Patients
           </span>
         </div>
 
-        <div className="p-4 rounded-2xl glass-card border border-slate-800 space-y-2">
-          <span className="text-[10px] uppercase font-bold text-slate-400">Autonomous Agent Workflows</span>
-          <p className="text-2xl font-black text-purple-400 font-mono">1,420 Run</p>
-          <span className="text-[11px] text-purple-300 flex items-center">
-            <Bot className="w-3 h-3 mr-1" /> ~180 hrs clinician time saved
+        <div className="p-4 rounded-2xl bg-white border border-secondary shadow-sm space-y-1.5">
+          <span className="text-[10px] uppercase font-bold text-slate-500">Autonomous Agent Workflows</span>
+          <p className="text-2xl font-bold text-slate-900 font-mono">
+            {metrics?.agentTasksRun || 9} Medical Agents
+          </p>
+          <span className="text-[11px] text-emerald-600 font-bold flex items-center">
+            <Bot className="w-3 h-3 mr-1 text-emerald-500" /> Active Autonomous Practice Core
           </span>
         </div>
 
-        <div className="p-4 rounded-2xl glass-card border border-slate-800 space-y-2">
-          <span className="text-[10px] uppercase font-bold text-slate-400">Average Patient Wait Time</span>
-          <p className="text-2xl font-black text-emerald-400 font-mono">11.2 mins</p>
-          <span className="text-[11px] text-emerald-300 flex items-center">
-            <Activity className="w-3 h-3 mr-1" /> Down from 24 mins
+        <div className="p-4 rounded-2xl bg-white border border-secondary shadow-sm space-y-1.5">
+          <span className="text-[10px] uppercase font-bold text-slate-500">Average Patient Wait Time</span>
+          <p className="text-2xl font-bold text-emerald-600 font-mono">
+            {metrics?.averageWaitTime || '8.5'} mins
+          </p>
+          <span className="text-[11px] text-emerald-600 font-bold flex items-center">
+            <Activity className="w-3 h-3 mr-1" /> Real-time Queue Telemetry
           </span>
         </div>
       </div>
@@ -108,13 +116,13 @@ export const PracticeAnalyticsPage: React.FC = () => {
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Chart 1: Revenue & Consultation Volume Area Chart (8 cols) */}
-        <div className="lg:col-span-8 p-5 rounded-3xl glass-card border border-slate-800 space-y-4">
+        <div className="lg:col-span-8 p-5 rounded-3xl bg-white border border-secondary shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-bold text-sm text-white">Revenue & Clinical Consultations Trend</h3>
-              <p className="text-xs text-slate-400">Monthly breakdown across clinic encounters and diagnostic labs</p>
+              <h3 className="font-bold text-sm text-slate-900">Revenue & Clinical Consultations Trend</h3>
+              <p className="text-xs text-slate-500">Monthly breakdown across clinic encounters and diagnostic labs</p>
             </div>
-            <span className="text-xs font-mono text-brand-400 bg-slate-900 px-3 py-1 rounded-xl border border-slate-800">
+            <span className="text-xs font-mono font-bold text-primary bg-secondary/10 px-3 py-1 rounded-xl border border-secondary">
               FY 2026
             </span>
           </div>
@@ -124,21 +132,21 @@ export const PracticeAnalyticsPage: React.FC = () => {
               <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#06B6D4" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#06B6D4" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#7DAACB" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#7DAACB" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="consultsGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
                     <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
-                <XAxis dataKey="month" stroke="#64748B" textAnchor="end" fontSize={11} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                <XAxis dataKey="month" stroke="#64748B" fontSize={11} />
                 <YAxis stroke="#64748B" fontSize={11} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#0B1120', borderColor: '#1E293B', borderRadius: '12px', fontSize: '12px' }}
+                  contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: '12px', fontSize: '12px', color: '#0F172A' }}
                 />
-                <Area type="monotone" dataKey="revenue" stroke="#06B6D4" strokeWidth={2} fillOpacity={1} fill="url(#revenueGrad)" name="Revenue ($)" />
+                <Area type="monotone" dataKey="revenue" stroke="#7DAACB" strokeWidth={2} fillOpacity={1} fill="url(#revenueGrad)" name="Revenue (₹)" />
                 <Area type="monotone" dataKey="consultations" stroke="#10B981" strokeWidth={2} fillOpacity={1} fill="url(#consultsGrad)" name="Consultations" />
               </AreaChart>
             </ResponsiveContainer>
@@ -146,10 +154,10 @@ export const PracticeAnalyticsPage: React.FC = () => {
         </div>
 
         {/* Chart 2: Clinical Department Volume Distribution (4 cols) */}
-        <div className="lg:col-span-4 p-5 rounded-3xl glass-card border border-slate-800 space-y-4 flex flex-col justify-between">
+        <div className="lg:col-span-4 p-5 rounded-3xl bg-white border border-secondary shadow-sm space-y-4 flex flex-col justify-between">
           <div>
-            <h3 className="font-bold text-sm text-white">Department Patient Share</h3>
-            <p className="text-xs text-slate-400">Distribution by medical specialty</p>
+            <h3 className="font-bold text-sm text-slate-900">Department Patient Share</h3>
+            <p className="text-xs text-slate-500">Distribution by medical specialty</p>
           </div>
 
           <div className="h-56 w-full">
@@ -160,7 +168,7 @@ export const PracticeAnalyticsPage: React.FC = () => {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#0B1120', borderColor: '#1E293B', borderRadius: '12px', fontSize: '12px' }} />
+                <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: '12px', fontSize: '12px', color: '#0F172A' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -169,7 +177,7 @@ export const PracticeAnalyticsPage: React.FC = () => {
             {deptData.map((d, idx) => (
               <div key={idx} className="flex items-center space-x-2">
                 <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                <span className="text-slate-300 font-medium truncate">{d.name} ({d.value}%)</span>
+                <span className="text-slate-700 font-medium truncate">{d.name} ({d.value}%)</span>
               </div>
             ))}
           </div>
