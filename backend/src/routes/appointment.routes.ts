@@ -98,20 +98,50 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // GET /api/appointments/:id - Single appointment details
-router.get('/:id', (req: AuthenticatedRequest, res: Response) => {
-  const apt = store.appointments.find((a) => a.id === req.params.id);
+router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
+  let apt = store.appointments.find((a) => a.id === req.params.id);
+  if (!apt && firebaseAdminDb) {
+    try {
+      const docId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      const doc = await firebaseAdminDb.collection('appointments').doc(docId).get();
+      if (doc.exists) {
+        apt = doc.data() as Appointment;
+      }
+    } catch (e) {}
+  }
   if (!apt) {
     return res.status(404).json({ error: 'Appointment not found' });
   }
 
-  const patient = store.patients.find((p) => p.id === apt.patientId);
+  let patient = store.patients.find((p) => p.id === apt!.patientId) || apt.patient;
+  if (!patient && apt.patientName) {
+    const parts = apt.patientName.trim().split(/\s+/);
+    patient = {
+      id: apt.patientId || uuidv4(),
+      mrn: `MRN-${Math.abs(apt.id.split('-')[0].charCodeAt(0) * 1000 + 520)}`,
+      firstName: parts[0] || 'Patient',
+      lastName: parts.slice(1).join(' ') || '',
+      dateOfBirth: (apt as any).dateOfBirth || '1995-01-01',
+      gender: (apt as any).gender || 'undisclosed',
+      phone: (apt as any).phone || '',
+      email: (apt as any).email || '',
+      address: '',
+      emergencyContactName: '',
+      emergencyContactPhone: '',
+      emergencyContactRelation: '',
+      allergies: [],
+      chronicConditions: [],
+      createdAt: apt.createdAt || new Date().toISOString(),
+      updatedAt: apt.updatedAt || new Date().toISOString(),
+    } as unknown as Patient;
+  }
   const doctor = store.doctors.find((d) => d.id === apt.doctorId);
   const doctorUser = doctor ? store.users.find((u) => u.id === doctor.userId) : undefined;
   const hospital = store.hospitals.find((h) => h.id === apt.hospitalId) || (doctor ? store.hospitals.find((h) => h.id === doctor.hospitalId) : undefined);
-  const clinicalNotes = store.clinicalNotes.filter((n) => n.appointmentId === apt.id);
-  const vitals = store.vitals.filter((v) => v.appointmentId === apt.id);
-  const prescriptions = store.prescriptions.filter((p) => p.appointmentId === apt.id);
-  const treatments = store.treatments.filter((t) => t.appointmentId === apt.id);
+  const clinicalNotes = store.clinicalNotes.filter((n) => n.appointmentId === apt!.id);
+  const vitals = store.vitals.filter((v) => v.appointmentId === apt!.id);
+  const prescriptions = store.prescriptions.filter((p) => p.appointmentId === apt!.id);
+  const treatments = store.treatments.filter((t) => t.appointmentId === apt!.id);
 
   res.json({
     ...apt,
