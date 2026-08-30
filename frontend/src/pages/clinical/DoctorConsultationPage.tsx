@@ -67,10 +67,10 @@ export const DoctorConsultationPage: React.FC = () => {
         ]);
 
         const validAppointments = (aptRes.data || []).filter((apt: any) => {
-          const patientObj = (patRes.data || []).find((p: any) => p.id === apt.patientId) || apt.patient;
+          const patientObj = (patRes.data || []).find((p: any) => p.id === apt.patientId || p.userId === apt.patientId) || apt.patient;
           const patientFullName = patientObj ? `${patientObj.firstName || ''} ${patientObj.lastName || ''}`.trim() : (apt.patientName || '');
-          const lower = patientFullName.toLowerCase();
-          return lower !== 'patient' && lower !== 'patient name' && lower !== '' && lower !== 'undefined';
+          const lower = patientFullName.trim().toLowerCase();
+          return lower !== 'patient' && lower !== 'patient name' && lower !== '' && lower !== 'undefined' && lower !== 'null';
         });
 
         setAppointments(validAppointments);

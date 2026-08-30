@@ -58,6 +58,12 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
     results = results.filter((a) => a.dateTime.startsWith(date as string));
   }
 
+  // Filter out placeholder test appointments
+  results = results.filter((a) => {
+    const pName = (a.patientName || (a.patient ? `${a.patient.firstName || ''} ${a.patient.lastName || ''}` : '')).trim().toLowerCase();
+    return pName !== 'patient' && pName !== 'patient name' && pName !== '';
+  });
+
   // Populate patient, doctor, and hospital information
   const populated = results.map((apt) => {
     let patient = store.patients.find((p) => p.id === apt.patientId) || apt.patient;
