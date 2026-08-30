@@ -28,6 +28,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
   // Enforce patient-level isolation: if caller is a patient, resolve all patient profiles for this user
   if (req.user && req.user.role === 'patient') {
     const userEmail = (req.user.email || '').toLowerCase();
+    const userEmailPrefix = userEmail.split('@')[0].toLowerCase();
     const userFullName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim().toLowerCase();
     const callerPatients = store.patients.filter(
       (p) => (p.userId && p.userId === req.user!.id) || (p.email && p.email.toLowerCase() === userEmail) || p.id === req.user!.id
@@ -38,7 +39,12 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
     results = results.filter((a) => {
       if (callerPatientIds.includes(a.patientId)) return true;
       if (a.patient && callerPatientIds.includes(a.patient.id)) return true;
-      if (a.patientName && userFullName && a.patientName.trim().toLowerCase() === userFullName) return true;
+      if (a.patientName) {
+        const aptName = a.patientName.trim().toLowerCase();
+        if (userFullName && aptName === userFullName) return true;
+        if (userEmailPrefix && (aptName.includes(userEmailPrefix) || userEmailPrefix.includes(aptName))) return true;
+        if (req.user!.firstName && aptName.includes(req.user!.firstName.toLowerCase())) return true;
+      }
       return false;
     });
   } else if (patientId) {
