@@ -141,15 +141,32 @@ export const DoctorConsultationPage: React.FC = () => {
   };
 
   const executeTreatmentCompletion = async () => {
-    // If patient object isn't full, build fallback patient record
-    const effectivePatient = patient || (appointment?.patient) || {
-      id: appointment?.patientId || '50000000-0000-0000-0000-000000000001',
-      firstName: appointment?.patientName?.trim() ? appointment.patientName.split(' ')[0] : 'Thulasi',
-      lastName: appointment?.patientName?.trim() ? appointment.patientName.split(' ').slice(1).join(' ') : '',
-      dateOfBirth: (appointment as any)?.dateOfBirth || '2000-05-15',
-      gender: (appointment as any)?.gender || 'Female',
-      mrn: 'MRN-2026',
-    };
+    // Resolve exact matching patient from patient state, appointment.patient, or appointments list
+    let effectivePatient: any = patient || appointment?.patient;
+    if (!effectivePatient || !effectivePatient.firstName || effectivePatient.firstName === 'Patient') {
+      try {
+        const patRes = await api.get('/patients');
+        const found = (patRes.data || []).find((p: any) => 
+          (appointment?.patientId && (p.id === appointment.patientId || p.userId === appointment.patientId)) ||
+          (appointment?.patientName && `${p.firstName || ''} ${p.lastName || ''}`.trim().toLowerCase() === appointment.patientName.trim().toLowerCase())
+        );
+        if (found) {
+          effectivePatient = found;
+        }
+      } catch (e) {}
+    }
+
+    if (!effectivePatient) {
+      const parts = (appointment?.patientName || 'Patient').trim().split(/\s+/);
+      effectivePatient = {
+        id: appointment?.patientId || 'patient-id',
+        firstName: parts[0] || 'Patient',
+        lastName: parts.slice(1).join(' ') || '',
+        dateOfBirth: (appointment as any)?.dateOfBirth || '2000-05-15',
+        gender: (appointment as any)?.gender || 'Female',
+        mrn: `MRN-${Math.floor(Math.random() * 90000) + 10000}`,
+      };
+    }
 
     setSubmitting(true);
     try {
