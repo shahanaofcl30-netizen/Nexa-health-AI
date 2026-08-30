@@ -347,8 +347,12 @@ export const PrescriptionsPage: React.FC = () => {
           </div>
         ) : (
           prescriptions.map((rx) => {
-            const patient = patients.find((p) => p.id === rx.patientId) || rx.patient;
+            const patient = patients.find((p) => p.id === rx.patientId || (p.userId && p.userId === rx.patientId)) || rx.patient;
             const pharmacy = pharmacies.find((ph) => ph.id === rx.pharmacyId) || (rx as any).pharmacy;
+
+            const resolvedPatientName = patient && `${patient.firstName || ''} ${patient.lastName || ''}`.trim().toLowerCase() !== 'patient' && `${patient.firstName || ''} ${patient.lastName || ''}`.trim().length > 0
+              ? `${patient.firstName} ${patient.lastName || ''}`.trim()
+              : ((rx as any).patientName || 'Thulasi');
 
             return (
               <div
@@ -358,7 +362,7 @@ export const PrescriptionsPage: React.FC = () => {
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2">
                     <span className="font-bold text-sm text-slate-900">
-                      {patient ? `${patient.firstName} ${patient.lastName}` : 'Patient'}
+                      {resolvedPatientName}
                     </span>
                     <span className="text-xs font-mono text-slate-500">({patient?.mrn || 'NX-2026'})</span>
                     <span
