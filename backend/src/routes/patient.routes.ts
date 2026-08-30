@@ -21,7 +21,38 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
     patientMap.set(key, p);
   });
 
-  // 2. Pull Firestore patients and appointments if connected
+  // 2. Pull registered users with role 'patient'
+  store.users.filter((u) => u.role === 'patient').forEach((u) => {
+    const fullName = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email.split('@')[0];
+    const key = (u.id || fullName).toLowerCase();
+    if (!patientMap.has(key)) {
+      const p: Patient = {
+        id: u.id,
+        userId: u.id,
+        mrn: `NX-2026-${u.id.substring(0, 4)}`,
+        firstName: u.firstName || u.email.split('@')[0],
+        lastName: u.lastName || '',
+        dateOfBirth: '1995-05-15',
+        gender: 'female',
+        bloodGroup: 'O+',
+        phone: u.phone || '+91 98400 00000',
+        email: u.email,
+        address: 'Tamil Nadu, India',
+        emergencyContactName: 'Family Contact',
+        emergencyContactPhone: '+91 98400 00001',
+        emergencyContactRelation: 'Family',
+        allergies: [],
+        chronicConditions: [],
+        livingSummary: 'Registered patient profile.',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      patientMap.set(key, p);
+      store.patients.push(p);
+    }
+  });
+
+  // 3. Pull Firestore patients and appointments if connected
   try {
     if (firebaseAdminDb) {
       const [snap, aptSnap] = await Promise.all([
@@ -48,7 +79,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
           const parts = apt.patientName.trim().split(/\s+/);
           const key = apt.patientName.trim().toLowerCase();
           if (!patientMap.has(key)) {
-            patientMap.set(key, {
+            const p: Patient = {
               id: apt.patientId || doc.id,
               mrn: `NX-2026-${Math.floor(Math.random() * 900) + 100}`,
               firstName: parts[0] || 'Patient',
@@ -67,14 +98,16 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
               livingSummary: apt.reason || 'Booked appointment patient.',
               createdAt: apt.createdAt || new Date().toISOString(),
               updatedAt: apt.updatedAt || new Date().toISOString(),
-            } as Patient);
+            };
+            patientMap.set(key, p);
+            store.patients.push(p);
           }
         }
       });
     }
   } catch (e) {}
 
-  // 3. Pull in any patients from booked appointments
+  // 4. Pull in any patients from store.appointments
   store.appointments.forEach((apt) => {
     if (apt.patient) {
       const key = (apt.patient.id || `${apt.patient.firstName}-${apt.patient.lastName}`).toLowerCase();
@@ -85,7 +118,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
       const parts = apt.patientName.trim().split(/\s+/);
       const key = apt.patientName.trim().toLowerCase();
       if (!patientMap.has(key)) {
-        patientMap.set(key, {
+        const p: Patient = {
           id: apt.patientId || uuidv4(),
           mrn: `NX-2026-${Math.floor(Math.random() * 900) + 100}`,
           firstName: parts[0] || 'Patient',
@@ -104,7 +137,9 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
           livingSummary: apt.reason || 'Booked appointment patient.',
           createdAt: apt.createdAt || new Date().toISOString(),
           updatedAt: apt.updatedAt || new Date().toISOString(),
-        } as Patient);
+        };
+        patientMap.set(key, p);
+        store.patients.push(p);
       }
     }
   });
