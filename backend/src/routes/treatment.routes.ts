@@ -85,55 +85,69 @@ router.post('/', requireRole('doctor', 'admin', 'super_admin'), async (req: Auth
   const treatmentId = uuidv4();
   let createdPrescriptionId: string | undefined = undefined;
 
-  // 1. If medicines are provided, generate a linked electronic prescription
-  if (Array.isArray(medicines) && medicines.length > 0) {
-    const prescriptionId = uuidv4();
-    const prescriptionItems: PrescriptionItem[] = medicines.map((m: any) => ({
+  // 1. Generate an official linked electronic prescription for the encounter
+  const prescriptionId = uuidv4();
+  const effectiveMedicines = (Array.isArray(medicines) && medicines.length > 0)
+    ? medicines
+    : [{
+        medicationName: 'Clinical Counseling / Preventive Care',
+        dosage: 'Daily',
+        frequency: 'As directed',
+        durationDays: 30,
+        instructions: treatmentDetails || clinicalNotes || 'Follow prescribed health regimen and hydration.',
+      }];
+
+  const prescriptionItems: PrescriptionItem[] = effectiveMedicines.map((m: any) => ({
+    id: uuidv4(),
+    prescriptionId,
+    medicationName: m.medicationName,
+    dosage: m.dosage,
+    frequency: m.frequency,
+    durationDays: m.durationDays || 7,
+    instructions: m.instructions || 'Take as directed by physician',
+    warnings: m.warnings || [],
+  }));
+
+  const newPrescription: Prescription = {
+    id: prescriptionId,
+    patientId,
+    doctorId,
+    hospitalId,
+    appointmentId,
+    treatmentId,
+    pharmacyId: store.pharmacies[0]?.id,
+    items: prescriptionItems,
+    diagnosis,
+    notes: clinicalNotes || `Prescribed during encounter at ${hospitalId}`,
+    status: 'signed',
+    signedAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  try {
+    if (firebaseAdminDb) {
+      await firebaseAdminDb.collection('prescriptions').doc(newPrescription.id).set(newPrescription);
+    }
+  } catch (e) {}
+
+  store.prescriptions.unshift(newPrescription);
+  createdPrescriptionId = prescriptionId;
+
+  // Populate patient medication reminders
+  prescriptionItems.forEach((item) => {
+    store.medicationReminders.push({
       id: uuidv4(),
-      prescriptionId,
-      medicationName: m.medicationName,
-      dosage: m.dosage,
-      frequency: m.frequency,
-      durationDays: m.durationDays || 7,
-      instructions: m.instructions || 'Take as directed by physician',
-      warnings: m.warnings || [],
-    }));
-
-    const newPrescription: Prescription = {
-      id: prescriptionId,
       patientId,
-      doctorId,
-      hospitalId,
-      appointmentId,
-      treatmentId,
-      pharmacyId: store.pharmacies[0]?.id,
-      items: prescriptionItems,
-      diagnosis,
-      notes: clinicalNotes || `Prescribed during encounter at ${hospitalId}`,
-      status: 'issued',
-      signedAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    store.prescriptions.unshift(newPrescription);
-    createdPrescriptionId = prescriptionId;
-
-    // Populate patient medication reminders
-    prescriptionItems.forEach((item) => {
-      store.medicationReminders.push({
-        id: uuidv4(),
-        patientId,
-        prescriptionItemId: item.id,
-        medicationName: item.medicationName,
-        dosage: item.dosage,
-        scheduledTime: '08:00',
-        date: new Date().toISOString().split('T')[0],
-        status: 'pending',
-        notes: item.instructions,
-      });
+      prescriptionItemId: item.id,
+      medicationName: item.medicationName,
+      dosage: item.dosage,
+      scheduledTime: '08:00',
+      date: new Date().toISOString().split('T')[0],
+      status: 'pending',
+      notes: item.instructions,
     });
-  }
+  });
 
   // 2. Create the Treatment Record
   const newTreatment: Treatment = {
@@ -142,6 +156,7 @@ router.post('/', requireRole('doctor', 'admin', 'super_admin'), async (req: Auth
     doctorId,
     hospitalId,
     appointmentId,
+    prescriptionId: createdPrescriptionId,
     symptoms,
     diagnosis,
     treatmentDetails: treatmentDetails || 'Clinical evaluation and treatment plan established.',
@@ -155,7 +170,6 @@ router.post('/', requireRole('doctor', 'admin', 'super_admin'), async (req: Auth
       instructions: m.instructions,
     })),
     followUpDate,
-    prescriptionId: createdPrescriptionId,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };

@@ -10,14 +10,34 @@ import { CLINICAL_DISCLAIMER } from '../agents/core/SafetyGuardrails';
 const router = Router();
 
 // GET /api/prescriptions - List prescriptions with filters
-router.get('/', (req: AuthenticatedRequest, res: Response) => {
+router.get('/', async (req: AuthenticatedRequest, res: Response) => {
   const { patientId, doctorId, hospitalId } = req.query;
 
-  let results = store.prescriptions.filter((p) => {
+  const prescriptionMap = new Map<string, Prescription>();
+
+  // 1. In-memory prescriptions
+  store.prescriptions.forEach((p) => {
+    prescriptionMap.set(p.id, p);
+  });
+
+  // 2. Firestore prescriptions
+  try {
+    if (firebaseAdminDb) {
+      const snap = await firebaseAdminDb.collection('prescriptions').get();
+      snap.docs.forEach((doc) => {
+        const p = doc.data() as Prescription;
+        if (!prescriptionMap.has(p.id)) {
+          prescriptionMap.set(p.id, p);
+        }
+      });
+    }
+  } catch (e) {}
+
+  let results = Array.from(prescriptionMap.values()).filter((p) => {
     // Filter out dummy/placeholder prescriptions
     const isPlaceholderMedicine = p.items?.some(item => {
       const name = (item.medicationName || '').toLowerCase();
-      return name.includes('no medication') || name.includes('no medicine') || name.includes('(n/a)') || name === 'n/a';
+      return (name.includes('no medication') || name.includes('no medicine') || name.includes('(n/a)') || name === 'n/a') && !name.includes('clinical counseling');
     });
     if (isPlaceholderMedicine) return false;
     return true;
