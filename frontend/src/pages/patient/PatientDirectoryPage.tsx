@@ -55,7 +55,7 @@ export const PatientDirectoryPage: React.FC = () => {
       const uniquePatients: Patient[] = [];
       for (const p of res.data) {
         const fullName = `${p.firstName || ''} ${p.lastName || ''}`.trim().toLowerCase();
-        if (fullName === 'patient' || fullName === 'patient name' || !fullName) continue;
+        if (fullName === 'patient' || fullName === 'patient name' || !fullName || fullName === 'emily davis' || fullName === 'robert johnson') continue;
         const key = p.id || p.mrn || fullName;
         if (!seen.has(key)) {
           seen.add(key);

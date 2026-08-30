@@ -70,7 +70,10 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
     }
   });
 
-  let results = Array.from(patientMap.values());
+  let results = Array.from(patientMap.values()).filter((p) => {
+    const fullName = `${p.firstName || ''} ${p.lastName || ''}`.trim().toLowerCase();
+    return fullName !== 'emily davis' && fullName !== 'robert johnson' && fullName !== 'patient' && fullName !== 'patient name';
+  });
 
   if (query) {
     results = results.filter((p) =>

@@ -211,35 +211,6 @@ class DataStore {
         { dayOfWeek: 5, startTime: '08:00', endTime: '18:00', slotDurationMinutes: 30 },
         { dayOfWeek: 6, startTime: '09:00', endTime: '14:00', slotDurationMinutes: 30 },
       ],
-      
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: '30000000-0000-0000-0000-000000000009',
-      email: 'emily.davis@patient.nexa.ai',
-      role: 'patient',
-      firstName: 'Emily',
-      lastName: 'Davis',
-      phone: '+1 (555) 100-0009',
-      verificationStatus: 'approved',
-      
-      
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: '30000000-0000-0000-0000-000000000010',
-      email: 'robert.j@patient.nexa.ai',
-      role: 'patient',
-      firstName: 'Robert',
-      lastName: 'Johnson',
-      phone: '+1 (555) 100-0010',
-      verificationStatus: 'approved',
-      
-      
       isActive: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
