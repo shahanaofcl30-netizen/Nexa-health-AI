@@ -21,15 +21,54 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
     patientMap.set(key, p);
   });
 
-  // 2. Pull Firestore patients if connected
+  // 2. Pull Firestore patients and appointments if connected
   try {
     if (firebaseAdminDb) {
-      const snap = await firebaseAdminDb.collection('patients').get();
+      const [snap, aptSnap] = await Promise.all([
+        firebaseAdminDb.collection('patients').get(),
+        firebaseAdminDb.collection('appointments').get(),
+      ]);
+
       snap.docs.forEach((doc) => {
         const p = doc.data() as Patient;
         const key = (p.id || `${p.firstName}-${p.lastName}`).toLowerCase();
         if (!patientMap.has(key)) {
           patientMap.set(key, p);
+        }
+      });
+
+      aptSnap.docs.forEach((doc) => {
+        const apt = doc.data() as any;
+        if (apt.patient) {
+          const key = (apt.patient.id || `${apt.patient.firstName}-${apt.patient.lastName}`).toLowerCase();
+          if (!patientMap.has(key)) {
+            patientMap.set(key, apt.patient);
+          }
+        } else if (apt.patientName && apt.patientName.toLowerCase() !== 'patient' && apt.patientName.toLowerCase() !== 'patient name') {
+          const parts = apt.patientName.trim().split(/\s+/);
+          const key = apt.patientName.trim().toLowerCase();
+          if (!patientMap.has(key)) {
+            patientMap.set(key, {
+              id: apt.patientId || doc.id,
+              mrn: `NX-2026-${Math.floor(Math.random() * 900) + 100}`,
+              firstName: parts[0] || 'Patient',
+              lastName: parts.slice(1).join(' ') || '',
+              dateOfBirth: apt.dateOfBirth || '2000-05-15',
+              gender: apt.gender || 'Female',
+              bloodGroup: 'O+',
+              phone: apt.phone || '+91 98400 00000',
+              email: apt.email || 'patient@nexahealth.ai',
+              address: 'Tamil Nadu, India',
+              emergencyContactName: 'Family Contact',
+              emergencyContactPhone: '+91 98400 00001',
+              emergencyContactRelation: 'Family',
+              allergies: [],
+              chronicConditions: [],
+              livingSummary: apt.reason || 'Booked appointment patient.',
+              createdAt: apt.createdAt || new Date().toISOString(),
+              updatedAt: apt.updatedAt || new Date().toISOString(),
+            } as Patient);
+          }
         }
       });
     }
