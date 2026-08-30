@@ -68,10 +68,10 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
         mrn: `MRN-${Math.abs(apt.id.split('-')[0].charCodeAt(0) * 1000 + 520)}`,
         firstName: parts[0] || 'Patient',
         lastName: parts.slice(1).join(' ') || '',
-        dateOfBirth: '1995-01-01',
-        gender: 'undisclosed',
-        phone: '',
-        email: '',
+        dateOfBirth: (apt as any).dateOfBirth || '2000-05-15',
+        gender: (apt as any).gender || 'Female',
+        phone: (apt as any).phone || '',
+        email: (apt as any).email || '',
         address: '',
         emergencyContactName: '',
         emergencyContactPhone: '',
@@ -264,9 +264,9 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
 
 
   // Determine effective hospitalId
-  let effectiveHospitalId = hospitalId;
+  const effectiveHospitalId = hospitalId || targetHospital?.id;
 
-  const newAppointment: Appointment = {
+  const newAppointment: any = {
     id: uuidv4(),
     patientId,
     patientName,
@@ -279,6 +279,10 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
     triageLevel: triageLevel as TriageLevel,
     reason,
     notes,
+    dateOfBirth: dateOfBirth || (patient?.dateOfBirth) || '2000-05-15',
+    gender: gender || (patient?.gender) || 'Female',
+    phone: phone || (patient?.phone) || '',
+    email: email || (patient?.email) || '',
     telehealthRoomId: type === 'telehealth' ? `telehealth-room-${uuidv4().slice(0, 8)}` : undefined,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
