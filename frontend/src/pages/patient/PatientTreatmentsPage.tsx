@@ -35,9 +35,8 @@ export const PatientTreatmentsPage: React.FC = () => {
     const fetchTreatments = async () => {
       setLoading(true);
       try {
-        const url = currentPatient?.id ? `/treatments?patientId=${currentPatient.id}` : '/treatments';
-        const res = await api.get(url);
-        setTreatments(res.data);
+        const res = await api.get('/treatments');
+        setTreatments(res.data || []);
       } catch (err) {
         console.error('Failed to load treatments:', err);
       } finally {
@@ -46,7 +45,7 @@ export const PatientTreatmentsPage: React.FC = () => {
     };
 
     fetchTreatments();
-  }, [currentPatient?.id]);
+  }, [currentPatient?.id, currentUser?.id]);
 
   const handleFindPharmacyNearHospital = (hospital?: Hospital) => {
     if (hospital) {

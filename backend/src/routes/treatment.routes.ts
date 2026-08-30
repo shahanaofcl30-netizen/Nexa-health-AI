@@ -32,7 +32,22 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
 
   let results = Array.from(treatmentMap.values());
 
-  if (patientId) results = results.filter((t) => t.patientId === patientId);
+  if (req.user && req.user.role === 'patient') {
+    const userEmail = (req.user.email || '').toLowerCase();
+    const callerPatients = store.patients.filter(
+      (p) => (p.userId && p.userId === req.user!.id) || (p.email && p.email.toLowerCase() === userEmail) || p.id === req.user!.id
+    );
+    const callerPatientIds = callerPatients.map((p) => p.id);
+    callerPatientIds.push(req.user.id);
+
+    results = results.filter((t) => {
+      if (callerPatientIds.includes(t.patientId)) return true;
+      if (patientId && (t.patientId === patientId || callerPatientIds.includes(patientId as string))) return true;
+      return false;
+    });
+  } else if (patientId) {
+    results = results.filter((t) => t.patientId === patientId);
+  }
   if (doctorId) results = results.filter((t) => t.doctorId === doctorId);
   if (hospitalId) results = results.filter((t) => t.hospitalId === hospitalId);
   if (appointmentId) results = results.filter((t) => t.appointmentId === appointmentId);
