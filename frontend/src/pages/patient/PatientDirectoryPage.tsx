@@ -54,8 +54,10 @@ export const PatientDirectoryPage: React.FC = () => {
       const seen = new Set<string>();
       const uniquePatients: Patient[] = [];
       for (const p of res.data) {
-        const key = `${p.firstName || ''}-${p.lastName || ''}-${p.phone || ''}`.trim().toLowerCase();
-        if (!seen.has(key) && key.length > 0) {
+        const fullName = `${p.firstName || ''} ${p.lastName || ''}`.trim().toLowerCase();
+        if (fullName === 'patient' || fullName === 'patient name' || !fullName) continue;
+        const key = p.id || p.mrn || fullName;
+        if (!seen.has(key)) {
           seen.add(key);
           uniquePatients.push(p);
         }

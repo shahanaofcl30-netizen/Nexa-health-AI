@@ -12,15 +12,30 @@ const router = Router();
 router.get('/', async (req: AuthenticatedRequest, res: Response) => {
   const query = (req.query.q as string || '').toLowerCase();
   
-  // Combine store.patients with any booked appointment patients
+  // Combine store.patients, Firestore patients, and booked appointment patients
   const patientMap = new Map<string, Patient>();
 
+  // 1. Pull in-memory store patients
   store.patients.forEach((p) => {
     const key = (p.id || `${p.firstName}-${p.lastName}`).toLowerCase();
     patientMap.set(key, p);
   });
 
-  // Pull in any patients from booked appointments
+  // 2. Pull Firestore patients if connected
+  try {
+    if (firebaseAdminDb) {
+      const snap = await firebaseAdminDb.collection('patients').get();
+      snap.docs.forEach((doc) => {
+        const p = doc.data() as Patient;
+        const key = (p.id || `${p.firstName}-${p.lastName}`).toLowerCase();
+        if (!patientMap.has(key)) {
+          patientMap.set(key, p);
+        }
+      });
+    }
+  } catch (e) {}
+
+  // 3. Pull in any patients from booked appointments
   store.appointments.forEach((apt) => {
     if (apt.patient) {
       const key = (apt.patient.id || `${apt.patient.firstName}-${apt.patient.lastName}`).toLowerCase();
