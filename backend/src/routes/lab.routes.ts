@@ -10,16 +10,39 @@ import { CLINICAL_DISCLAIMER } from '../agents/core/SafetyGuardrails';
 const router = Router();
 
 // GET /api/labs - List lab orders with filters
-router.get('/', (req: AuthenticatedRequest, res: Response) => {
+router.get('/', async (req: AuthenticatedRequest, res: Response) => {
   const { patientId, doctorId, status } = req.query;
 
-  let results = store.labOrders;
+  const labMap = new Map<string, LabOrder>();
+
+  store.labOrders.forEach((l) => {
+    labMap.set(l.id, l);
+  });
+
+  try {
+    if (firebaseAdminDb) {
+      const snap = await firebaseAdminDb.collection('labOrders').get();
+      snap.docs.forEach((doc) => {
+        const data = doc.data() as LabOrder;
+        if (!labMap.has(data.id || doc.id)) {
+          labMap.set(data.id || doc.id, { ...data, id: data.id || doc.id });
+        }
+      });
+    }
+  } catch (e) {}
+
+  let results = Array.from(labMap.values());
+
   if (patientId) results = results.filter((l) => l.patientId === patientId);
   if (doctorId) results = results.filter((l) => l.doctorId === doctorId);
-  if (status) results = results.filter((l) => l.status === status);
+  if (status && status !== 'all') results = results.filter((l) => l.status === status);
 
   const populated = results.map((lab) => {
-    const patient = store.patients.find((p) => p.id === lab.patientId);
+    let patient = store.patients.find((p) => p.id === lab.patientId || p.userId === lab.patientId);
+    if (!patient && lab.appointmentId) {
+      const apt = store.appointments.find((a) => a.id === lab.appointmentId);
+      if (apt?.patient) patient = apt.patient;
+    }
     const doctor = store.doctors.find((d) => d.id === lab.doctorId);
     return {
       ...lab,
@@ -98,6 +121,12 @@ router.put('/:id/results', async (req: AuthenticatedRequest, res: Response) => {
 
   lab.status = status as LabOrderStatus;
   lab.completedAt = new Date().toISOString();
+
+  try {
+    if (firebaseAdminDb) {
+      await firebaseAdminDb.collection('labOrders').doc(lab.id).set(lab);
+    }
+  } catch (e) {}
 
   // Trigger autonomous LabReportAgent analysis
   try {
