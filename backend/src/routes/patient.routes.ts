@@ -150,10 +150,22 @@ router.get('/me', (req: AuthenticatedRequest, res: Response) => {
     return res.status(401).json({ error: 'Authentication required' });
   }
 
-  // Look up patient by userId or email
+  // Look up patient by userId or email or linked appointment
   let patient = store.patients.find(
-    (p) => (p.userId && p.userId === req.user!.id) || (p.email && p.email.toLowerCase() === req.user!.email.toLowerCase())
+    (p) => (p.userId && p.userId === req.user!.id) || (p.id && p.id === req.user!.id) || (p.email && p.email.toLowerCase() === req.user!.email.toLowerCase())
   );
+
+  if (!patient) {
+    const userFullName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim().toLowerCase();
+    const apt = store.appointments.find((a) => 
+      (a.patientId && a.patientId === req.user!.id) ||
+      (a.patientName && a.patientName.trim().toLowerCase() === userFullName) ||
+      (a.patient && a.patient.id === req.user!.id)
+    );
+    if (apt?.patient) {
+      patient = apt.patient;
+    }
+  }
 
   if (!patient && req.user.role === 'patient') {
     // Dynamically initialize patient profile for this authenticated user
