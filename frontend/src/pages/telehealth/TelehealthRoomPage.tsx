@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { io, Socket } from 'socket.io-client';
 import {
   Camera,
   CameraOff,
@@ -24,15 +23,7 @@ import api from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useCurrentPatient } from '../../hooks/usePatients';
 import { Appointment, Doctor, Patient, TelehealthSession } from '../../types/shared';
-
-// Public STUN servers
-const ICE_SERVERS = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-  ],
-};
+import { WebRTCService, ChatMessage } from '../../services/webrtcService';
 
 export const TelehealthRoomPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -56,19 +47,17 @@ export const TelehealthRoomPage: React.FC = () => {
   const [recordingConsent, setRecordingConsent] = useState(true);
 
   // WebRTC Connection State
-  const [connectionState, setConnectionState] = useState<string>('Initializing media...');
+  const [connectionState, setConnectionState] = useState<string>('Initializing camera & audio...');
   const [isRemoteConnected, setIsRemoteConnected] = useState<boolean>(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
 
   // Video Refs & WebRTC Instances
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
-  const localStreamRef = useRef<MediaStream | null>(null);
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const socketRef = useRef<Socket | null>(null);
+  const webrtcRef = useRef<WebRTCService | null>(null);
 
-  // Chat State
-  const [messages, setMessages] = useState<Array<{ sender: string; text: string; time: string }>>([]);
+  // In-Call Chat
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
 
   // Live SOAP Notes (Doctor side)
@@ -99,270 +88,126 @@ export const TelehealthRoomPage: React.FC = () => {
   const remoteParticipantName = isDoctor ? patientName : doctorName;
   const remoteParticipantLabel = isDoctor ? 'Patient' : `Doctor (${doctorSpecialty})`;
 
-  // 1. Initialize or query Telehealth Session
-  const initSession = async () => {
-    try {
-      setLoading(true);
-      const res = await api.post('/telehealth/session', {
-        appointmentId: urlAppointmentId || undefined,
-        roomId: urlRoomId || undefined,
-      });
-
-      setSessionData(res.data);
-      if (res.data.session?.chatMessages) {
-        setMessages(
-          res.data.session.chatMessages.map((m: any) => ({
-            sender: m.sender,
-            text: m.text,
-            time: new Date(m.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          }))
-        );
-      }
-      return res.data;
-    } catch (err) {
-      console.error('Failed to initialize telehealth session:', err);
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 2. Setup WebRTC PeerConnection & Socket.io Signaling
+  // 1. Initialize Telehealth Session metadata and determine exact Room ID
   useEffect(() => {
-    let isMounted = true;
+    let webrtc: WebRTCService | null = null;
 
-    const setupWebRTC = async () => {
-      const session = await initSession();
-      const targetRoomId = session?.session?.roomId || urlRoomId || 'consultation-active';
-
-      // Step A: Acquire Local MediaStream
+    const initTelehealth = async () => {
       try {
-        setConnectionState('Requesting camera & microphone...');
-        setMediaError(null);
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: true,
+        setLoading(true);
+        const res = await api.post('/telehealth/session', {
+          appointmentId: urlAppointmentId || undefined,
+          roomId: urlRoomId || undefined,
         });
 
-        if (!isMounted) {
-          stream.getTracks().forEach((t) => t.stop());
+        const data = res.data;
+        setSessionData(data);
+
+        const appointmentId = data.appointment?.id || urlAppointmentId;
+        const targetRoomId = data.session?.roomId || (appointmentId ? `consultation_${appointmentId}` : urlRoomId || 'consultation_active');
+
+        // Create WebRTC instance
+        webrtc = new WebRTCService();
+        webrtcRef.current = webrtc;
+
+        // Callbacks
+        webrtc.onRemoteStream = (remoteStream) => {
+          console.log('[WEBRTC] Hooking remote stream into video element');
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = remoteStream;
+          }
+          setIsRemoteConnected(true);
+        };
+
+        webrtc.onConnectionStateChange = (state) => {
+          setConnectionState(state);
+          if (state === 'Connected') {
+            setIsRemoteConnected(true);
+          } else if (state === 'Disconnected' || state.includes('failed')) {
+            setIsRemoteConnected(false);
+          }
+        };
+
+        webrtc.onChatMessage = (msg) => {
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === msg.id && msg.id !== undefined)) return prev;
+            return [...prev, msg];
+          });
+        };
+
+        // Acquire local preview stream
+        try {
+          const localStream = await webrtc.getMediaStream();
+          if (localVideoRef.current) {
+            localVideoRef.current.srcObject = localStream;
+          }
+        } catch (err: any) {
+          console.error('[WEBRTC] Media permission denied:', err);
+          setMediaError('Camera & microphone permissions are required for the video consultation. Please allow camera access in your browser.');
+          setConnectionState('Camera/Microphone permission denied');
           return;
         }
 
-        console.log('[WEBRTC] Local stream acquired');
-        localStreamRef.current = stream;
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-        }
+        // Start Firestore signaling session
+        await webrtc.startSession(
+          targetRoomId,
+          isDoctor ? 'doctor' : 'patient',
+          {
+            patientId: data.patient?.id || currentUser?.id,
+            patientName: patientName,
+            doctorId: data.doctor?.id,
+            doctorName: doctorName,
+            appointmentId: appointmentId,
+          }
+        );
       } catch (err: any) {
-        console.error('[WEBRTC] Media permission denied or failed:', err);
-        setMediaError('Camera/Microphone permission denied. Please allow camera access in your browser settings.');
-        setConnectionState('Camera/Microphone permission denied');
-        return;
+        console.error('Failed to setup telehealth session:', err);
+        setConnectionState('Unable to establish video connection. Please retry.');
+      } finally {
+        setLoading(false);
       }
-
-      // Step B: Connect to Signaling Server
-      const backendUrl = import.meta.env.VITE_API_BASE_URL
-        ? import.meta.env.VITE_API_BASE_URL.replace('/api', '')
-        : 'http://localhost:5000';
-
-      console.log(`[WEBRTC] Connecting to signaling server: ${backendUrl}`);
-      const socket = io(backendUrl, { transports: ['websocket', 'polling'] });
-      socketRef.current = socket;
-
-      // Step C: Initialize RTCPeerConnection
-      const pc = new RTCPeerConnection(ICE_SERVERS);
-      peerConnectionRef.current = pc;
-
-      // Add local audio/video tracks to peer connection
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((track) => {
-          console.log(`[WEBRTC] Adding local track: ${track.kind}`);
-          pc.addTrack(track, localStreamRef.current!);
-        });
-      }
-
-      // Handle Remote Stream ontrack
-      pc.ontrack = (event) => {
-        console.log('[WEBRTC] Remote track received:', event.streams);
-        if (event.streams && event.streams[0]) {
-          console.log('[WEBRTC] Remote stream attached to video element');
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = event.streams[0];
-          }
-          setIsRemoteConnected(true);
-          setConnectionState('Connected');
-        }
-      };
-
-      // Handle ICE Candidates
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          console.log('[WEBRTC] ICE candidate sent');
-          socket.emit('signal-candidate', {
-            roomId: targetRoomId,
-            candidate: event.candidate,
-            senderId: currentUser?.id || 'client',
-          });
-        }
-      };
-
-      // Handle Connection State Changes
-      pc.onconnectionstatechange = () => {
-        console.log(`[WEBRTC] Connection state: ${pc.connectionState}`);
-        if (pc.connectionState === 'connected') {
-          setIsRemoteConnected(true);
-          setConnectionState('Connected');
-        } else if (pc.connectionState === 'connecting') {
-          setConnectionState('Connecting...');
-        } else if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-          setIsRemoteConnected(false);
-          setConnectionState(pc.connectionState === 'failed' ? 'Connection failed' : 'Disconnected');
-        }
-      };
-
-      pc.oniceconnectionstatechange = () => {
-        console.log(`[WEBRTC] ICE Connection state: ${pc.iceConnectionState}`);
-        if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
-          setIsRemoteConnected(true);
-          setConnectionState('Connected');
-        } else if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
-          setIsRemoteConnected(false);
-          setConnectionState(pc.iceConnectionState === 'failed' ? 'Connection failed' : 'Reconnecting...');
-        }
-      };
-
-      // Step D: Socket Signaling Event Listeners
-      socket.on('connect', () => {
-        console.log(`[WEBRTC] Joining room: ${targetRoomId}`);
-        socket.emit('join-room', targetRoomId, currentUser?.id || 'client');
-      });
-
-      // When another user joins, create and send WebRTC Offer
-      socket.on('user-joined', async () => {
-        console.log('[WEBRTC] Another participant joined. Creating offer...');
-        setConnectionState('Connecting to participant...');
-        try {
-          const offer = await pc.createOffer({
-            offerToReceiveAudio: true,
-            offerToReceiveVideo: true,
-          });
-          await pc.setLocalDescription(offer);
-          console.log('[WEBRTC] Offer sent');
-          socket.emit('signal-offer', {
-            roomId: targetRoomId,
-            sdp: offer,
-            senderId: currentUser?.id || 'client',
-          });
-        } catch (err) {
-          console.error('[WEBRTC] Error creating offer:', err);
-        }
-      });
-
-      // Receive WebRTC Offer and create Answer
-      socket.on('signal-offer', async (data: { sdp: any; senderId: string }) => {
-        console.log('[WEBRTC] Offer received. Creating answer...');
-        setConnectionState('Connecting to participant...');
-        try {
-          await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          console.log('[WEBRTC] Answer sent');
-          socket.emit('signal-answer', {
-            roomId: targetRoomId,
-            sdp: answer,
-            senderId: currentUser?.id || 'client',
-          });
-        } catch (err) {
-          console.error('[WEBRTC] Error answering offer:', err);
-        }
-      });
-
-      // Receive WebRTC Answer
-      socket.on('signal-answer', async (data: { sdp: any }) => {
-        console.log('[WEBRTC] Answer received');
-        try {
-          await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-        } catch (err) {
-          console.error('[WEBRTC] Error setting remote description for answer:', err);
-        }
-      });
-
-      // Receive Remote ICE Candidate
-      socket.on('signal-candidate', async (data: { candidate: any }) => {
-        console.log('[WEBRTC] ICE candidate received');
-        try {
-          if (data.candidate) {
-            await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-          }
-        } catch (err) {
-          console.error('[WEBRTC] Error adding ICE candidate:', err);
-        }
-      });
-
-      // In-call Chat Message
-      socket.on('telehealth-chat', (msg: any) => {
-        setMessages((prev) => [...prev, msg]);
-      });
     };
 
-    setupWebRTC();
+    initTelehealth();
 
     return () => {
-      isMounted = false;
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((track) => track.stop());
-      }
-      if (peerConnectionRef.current) {
-        peerConnectionRef.current.close();
-      }
-      if (socketRef.current) {
-        socketRef.current.disconnect();
+      if (webrtc) {
+        webrtc.endSession();
       }
     };
   }, [urlRoomId, urlAppointmentId]);
 
-  // Toggle Controls
+  // Controls
   const handleToggleMic = () => {
-    if (localStreamRef.current) {
-      localStreamRef.current.getAudioTracks().forEach((track) => {
-        track.enabled = !micOn;
-      });
+    if (webrtcRef.current) {
+      const enabled = webrtcRef.current.toggleAudio();
+      setMicOn(enabled);
     }
-    setMicOn(!micOn);
   };
 
   const handleToggleCamera = () => {
-    if (localStreamRef.current) {
-      localStreamRef.current.getVideoTracks().forEach((track) => {
-        track.enabled = !cameraOn;
-      });
+    if (webrtcRef.current) {
+      const enabled = webrtcRef.current.toggleVideo();
+      setCameraOn(enabled);
     }
-    setCameraOn(!cameraOn);
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatInput.trim()) return;
+    if (!chatInput.trim() || !webrtcRef.current) return;
 
-    const newMsg = {
-      sender: currentUserName,
-      text: chatInput,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-
-    if (socketRef.current && sessionData?.session?.roomId) {
-      socketRef.current.emit('telehealth-chat', {
-        roomId: sessionData.session.roomId,
-        message: newMsg,
-      });
-    } else {
-      setMessages((prev) => [...prev, newMsg]);
+    try {
+      await webrtcRef.current.sendMessage(currentUserName, chatInput);
+      setChatInput('');
+    } catch (err) {
+      console.error('Failed to send chat message:', err);
     }
-    setChatInput('');
   };
 
   const handleEndConsultation = async () => {
+    if (webrtcRef.current) {
+      await webrtcRef.current.endSession();
+    }
     if (sessionData?.session?.roomId) {
       try {
         await api.put(`/telehealth/session/${sessionData.session.roomId}/status`, {
@@ -370,37 +215,12 @@ export const TelehealthRoomPage: React.FC = () => {
         });
       } catch (e) {}
     }
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => track.stop());
-    }
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
-    }
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-    }
     if (isDoctor) {
       navigate('/consultations');
     } else {
       navigate('/appointments');
     }
   };
-
-  const handleDoctorStartConsultation = async () => {
-    if (sessionData?.session?.roomId) {
-      try {
-        await api.put(`/telehealth/session/${sessionData.session.roomId}/status`, {
-          status: 'in_progress',
-        });
-        setSessionData((prev) =>
-          prev ? { ...prev, session: { ...prev.session, status: 'in_progress' } } : prev
-        );
-      } catch (e) {}
-    }
-  };
-
-  const sessionStatus = sessionData?.session?.status || 'waiting';
-  const isDoctorInCall = sessionStatus === 'in_progress' || isRemoteConnected;
 
   return (
     <div className="space-y-4">
@@ -422,11 +242,11 @@ export const TelehealthRoomPage: React.FC = () => {
                     : 'bg-amber-100 text-amber-700 border border-amber-200'
                 }`}
               >
-                {connectionState}
+                {isRemoteConnected ? 'Connected (Live HD Stream)' : connectionState}
               </span>
             </div>
             <p className="text-[11px] text-slate-500 font-mono">
-              Room: {sessionData?.session?.roomId || 'consultation-active'} • Encounter: {sessionData?.appointment?.reason || 'Clinical Telehealth'}
+              Room: {sessionData?.session?.roomId || 'consultation_active'} • Encounter: {sessionData?.appointment?.reason || 'Clinical Telehealth'}
             </p>
           </div>
         </div>
@@ -478,54 +298,32 @@ export const TelehealthRoomPage: React.FC = () => {
           {/* Fallback Overlay when Remote Video is Not Yet Connected */}
           {!isRemoteConnected && (
             <div className="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center text-center p-6 space-y-4 z-0">
-              {!isDoctor && !isDoctorInCall ? (
-                /* Patient Waiting Screen */
+              {!isDoctor ? (
+                /* Patient Waiting for Doctor Screen */
                 <>
                   <div className="w-20 h-20 rounded-full bg-primary/20 text-primary border-2 border-primary/40 flex items-center justify-center animate-pulse">
                     <Clock className="w-10 h-10" />
                   </div>
                   <div className="space-y-1.5 max-w-md">
-                    <h3 className="text-xl font-bold text-white">Waiting for your doctor</h3>
+                    <h3 className="text-xl font-bold text-white">Waiting for Dr. {doctorName.replace('Dr. ', '')}</h3>
                     <p className="text-sm text-slate-300">
-                      <strong className="text-primary">{doctorName}</strong> ({doctorSpecialty}) is not in the call yet.
+                      {doctorSpecialty} is joining the consultation room.
                     </p>
                     <p className="text-xs text-slate-400">
-                      Please keep this window open. The live consultation will connect automatically as soon as the doctor starts.
+                      Your camera and microphone are ready. The live video will connect automatically as soon as the doctor enters.
                     </p>
-                  </div>
-                </>
-              ) : isDoctor && !isDoctorInCall ? (
-                /* Doctor Pre-Join Screen */
-                <>
-                  <div className="w-20 h-20 rounded-full bg-emerald-500/20 text-emerald-400 border-2 border-emerald-500/40 flex items-center justify-center">
-                    <Video className="w-10 h-10" />
-                  </div>
-                  <div className="space-y-1.5 max-w-md">
-                    <h3 className="text-xl font-bold text-white">Ready for Telehealth Visit</h3>
-                    <p className="text-sm text-slate-300">
-                      Patient: <strong className="text-emerald-400">{patientName}</strong>
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      Chief Complaint: <strong>{sessionData?.appointment?.reason || 'General Consultation'}</strong>
-                    </p>
-                    <button
-                      onClick={handleDoctorStartConsultation}
-                      className="mt-4 px-6 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-sm shadow-md transition-all"
-                    >
-                      Start Video Consultation
-                    </button>
                   </div>
                 </>
               ) : (
-                /* Connecting Stream Loader */
+                /* Doctor Waiting for Patient Screen */
                 <>
-                  <div className="w-20 h-20 rounded-full bg-primary/20 text-primary border-2 border-primary/40 flex items-center justify-center animate-spin">
-                    <RefreshCw className="w-8 h-8" />
+                  <div className="w-20 h-20 rounded-full bg-emerald-500/20 text-emerald-400 border-2 border-emerald-500/40 flex items-center justify-center animate-pulse">
+                    <RefreshCw className="w-10 h-10 animate-spin" />
                   </div>
                   <div className="space-y-1.5 max-w-md">
-                    <h3 className="text-xl font-bold text-white">Connecting WebRTC Media Stream</h3>
+                    <h3 className="text-xl font-bold text-white">Connecting with Patient: {patientName}</h3>
                     <p className="text-sm text-slate-300">
-                      Connecting with <strong className="text-primary">{remoteParticipantName}</strong>...
+                      Chief Complaint: <strong>{sessionData?.appointment?.reason || 'General Consultation'}</strong>
                     </p>
                     <p className="text-xs text-slate-400 font-mono">{connectionState}</p>
                   </div>
@@ -625,7 +423,7 @@ export const TelehealthRoomPage: React.FC = () => {
             )}
           </div>
 
-          {/* Tab 1: Chat Message Thread */}
+          {/* Tab 1: Real-time In-Call Chat Thread via Firestore */}
           {activeSideTab === 'chat' && (
             <div className="flex-1 flex flex-col justify-between p-3 overflow-hidden">
               <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 text-xs">
@@ -636,7 +434,9 @@ export const TelehealthRoomPage: React.FC = () => {
                     <div key={idx} className="p-2.5 rounded-xl bg-secondary/10 border border-secondary space-y-0.5">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-slate-900 text-[11px]">{m.sender}</span>
-                        <span className="text-[9px] text-slate-500 font-mono">{m.time}</span>
+                        <span className="text-[9px] text-slate-500 font-mono">
+                          {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
                       </div>
                       <p className="text-slate-700 text-[11px] font-medium">{m.text}</p>
                     </div>
@@ -683,7 +483,7 @@ export const TelehealthRoomPage: React.FC = () => {
               </div>
 
               <button
-                onClick={() => alert('Live consultation notes synced to patient EHR!')}
+                onClick={() => alert('Live consultation notes synced to patient EHR chart!')}
                 className="w-full py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs shadow-sm transition-all"
               >
                 Sync to Patient Chart
