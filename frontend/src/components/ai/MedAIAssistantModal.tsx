@@ -116,22 +116,22 @@ export const MedAIAssistantModal: React.FC<MedAIAssistantModalProps> = ({ isOpen
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="w-full max-w-2xl h-[650px] glass-card rounded-2xl border border-brand-500/30 flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="w-full max-w-2xl h-[650px] bg-white rounded-2xl border border-secondary flex flex-col shadow-2xl overflow-hidden">
         {/* Modal Header */}
-        <div className="px-5 py-3.5 border-b border-slate-800 bg-[#0A101D] flex items-center justify-between">
+        <div className="px-5 py-3.5 border-b border-secondary bg-[#FFFDEB] flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-lg bg-brand-500/20 border border-brand-500/30 flex items-center justify-center text-brand-400">
+            <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center text-primary font-bold">
               <Sparkles className="w-4 h-4 animate-pulse" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <h3 className="font-bold text-sm text-white">MedAI Healthcare Assistant</h3>
-                <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono">
+                <h3 className="font-bold text-sm text-slate-900">MedAI Healthcare Assistant</h3>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold uppercase">
                   Online
                 </span>
               </div>
-              <p className="text-[10px] text-slate-400">Context-Aware Clinical Q&A & Record Synthesizer</p>
+              <p className="text-[11px] text-slate-600">Context-Aware Clinical Assistant Powered by Gemini</p>
             </div>
           </div>
 
@@ -140,7 +140,7 @@ export const MedAIAssistantModal: React.FC<MedAIAssistantModalProps> = ({ isOpen
             <select
               value={selectedPatientId}
               onChange={(e) => setSelectedPatientId(e.target.value)}
-              className="text-xs bg-slate-900 border border-slate-700 text-slate-300 rounded-lg px-2.5 py-1 focus:outline-none focus:border-brand-500"
+              className="text-xs bg-white border border-secondary text-slate-800 rounded-lg px-2.5 py-1 focus:outline-none focus:border-primary font-medium"
             >
               <option value="">No Patient Context</option>
               {patients.map((p) => (
@@ -152,7 +152,7 @@ export const MedAIAssistantModal: React.FC<MedAIAssistantModalProps> = ({ isOpen
 
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-secondary/30 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -160,15 +160,15 @@ export const MedAIAssistantModal: React.FC<MedAIAssistantModalProps> = ({ isOpen
         </div>
 
         {/* Disclaimer Banner */}
-        <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-[11px] text-amber-300 flex items-center space-x-2">
-          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+        <div className="px-4 py-2 bg-amber-50 border-b border-amber-200 text-[11px] text-amber-800 flex items-center space-x-2">
+          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 text-amber-600" />
           <span>
-            <strong>Clinical Safety Policy:</strong> MedAI provides assistive medical reference and synthesis. Not a substitute for licensed clinical judgment.
+            <strong>Clinical Safety Policy:</strong> MedAI provides assistive medical reference. Not a substitute for licensed clinical judgment.
           </span>
         </div>
 
         {/* Chat Message List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
+        <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/50">
           {messages.map((msg, i) => (
             <div
               key={i}
@@ -177,22 +177,22 @@ export const MedAIAssistantModal: React.FC<MedAIAssistantModalProps> = ({ isOpen
               }`}
             >
               {msg.sender === 'assistant' && (
-                <div className="w-7 h-7 rounded-lg bg-brand-500/20 border border-brand-500/30 flex items-center justify-center text-brand-400 flex-shrink-0 mt-0.5">
-                  <Bot className="w-3.5 h-3.5" />
+                <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center text-primary flex-shrink-0 mt-0.5 font-bold">
+                  <Bot className="w-4 h-4" />
                 </div>
               )}
 
               <div
-                className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed ${
+                className={`max-w-[85%] rounded-2xl px-4 py-3 text-xs leading-relaxed font-medium ${
                   msg.sender === 'user'
-                    ? 'bg-brand-600 text-white rounded-br-none shadow-md'
-                    : 'bg-slate-900/90 border border-slate-800 text-slate-200 rounded-bl-none shadow-sm'
+                    ? 'bg-primary text-slate-950 font-semibold rounded-br-none shadow-sm border border-primary/30'
+                    : 'bg-white border border-secondary text-slate-800 rounded-bl-none shadow-sm'
                 }`}
               >
                 <div className="whitespace-pre-wrap">{msg.text}</div>
                 <span
-                  className={`text-[9px] block mt-1 ${
-                    msg.sender === 'user' ? 'text-brand-200' : 'text-slate-500'
+                  className={`text-[9px] block mt-1.5 ${
+                    msg.sender === 'user' ? 'text-slate-800/80 font-mono' : 'text-slate-400 font-mono'
                   }`}
                 >
                   {msg.timestamp}
@@ -200,17 +200,17 @@ export const MedAIAssistantModal: React.FC<MedAIAssistantModalProps> = ({ isOpen
               </div>
 
               {msg.sender === 'user' && (
-                <div className="w-7 h-7 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 flex-shrink-0 mt-0.5">
-                  <User className="w-3.5 h-3.5" />
+                <div className="w-8 h-8 rounded-lg bg-secondary/50 border border-secondary flex items-center justify-center text-slate-700 flex-shrink-0 mt-0.5">
+                  <User className="w-4 h-4" />
                 </div>
               )}
             </div>
           ))}
 
           {loading && (
-            <div className="flex items-center space-x-2 text-xs text-brand-400 bg-slate-900/60 border border-slate-800 rounded-xl px-3 py-2 w-fit">
-              <Sparkles className="w-3.5 h-3.5 animate-spin" />
-              <span>MedAI is analyzing medical context and guidelines...</span>
+            <div className="flex items-center space-x-2 text-xs text-primary font-bold bg-white border border-secondary rounded-xl px-3 py-2 w-fit shadow-sm">
+              <Sparkles className="w-3.5 h-3.5 animate-spin text-primary" />
+              <span>MedAI is analyzing medical context and generating response...</span>
             </div>
           )}
 
@@ -218,13 +218,13 @@ export const MedAIAssistantModal: React.FC<MedAIAssistantModalProps> = ({ isOpen
         </div>
 
         {/* Suggested Prompt Chips */}
-        <div className="px-4 py-2 bg-slate-950/60 border-t border-slate-800/80 flex items-center space-x-1.5 overflow-x-auto text-[11px]">
-          <span className="text-slate-500 flex-shrink-0">Suggestions:</span>
+        <div className="px-4 py-2 bg-[#FFFDEB] border-t border-secondary flex items-center space-x-1.5 overflow-x-auto text-[11px]">
+          <span className="text-slate-600 font-bold flex-shrink-0">Suggestions:</span>
           {quickPrompts.map((prompt, idx) => (
             <button
               key={idx}
               onClick={() => handleSend(prompt)}
-              className="flex-shrink-0 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-brand-500/20 border border-slate-800 hover:border-brand-500/40 text-slate-300 hover:text-brand-300 transition-colors"
+              className="flex-shrink-0 px-2.5 py-1 rounded-lg bg-white hover:bg-secondary/30 border border-secondary text-slate-700 font-medium transition-colors"
             >
               {prompt}
             </button>
@@ -232,19 +232,19 @@ export const MedAIAssistantModal: React.FC<MedAIAssistantModalProps> = ({ isOpen
         </div>
 
         {/* Input Footer */}
-        <div className="p-3 border-t border-slate-800 bg-[#0A101D] flex items-center space-x-2">
+        <div className="p-3 border-t border-secondary bg-white flex items-center space-x-2">
           <input
             type="text"
             value={inputQuery}
             onChange={(e) => setInputQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             placeholder="Ask MedAI about clinical guidelines, patient history, drug interactions..."
-            className="flex-1 text-xs bg-slate-900 border border-slate-700 text-slate-100 rounded-xl px-4 py-2.5 focus:outline-none focus:border-brand-500 placeholder:text-slate-500"
+            className="flex-1 text-xs bg-white border border-secondary text-slate-900 rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary placeholder:text-slate-400 font-medium"
           />
           <button
             onClick={() => handleSend()}
             disabled={!inputQuery.trim() || loading}
-            className="p-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-slate-950 font-bold transition-all disabled:opacity-50 shadow-glow-cyan"
+            className="p-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold transition-all disabled:opacity-50 shadow-sm"
           >
             <Send className="w-4 h-4" />
           </button>

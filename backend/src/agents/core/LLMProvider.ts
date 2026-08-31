@@ -45,14 +45,16 @@ export class LLMProvider {
         return await this.callOpenAI(options);
       } else if (provider === 'anthropic' && ENV.ANTHROPIC_API_KEY) {
         return await this.callAnthropic(options);
-      } else if (provider === 'gemini' && ENV.GEMINI_API_KEY) {
-        return await this.callGemini(options);
       }
-    } catch (err) {
-      console.warn(`[LLMProvider] Live API call to Gemini/LLM failed, falling back to clinical intelligence engine:`, err);
+    } catch (err: any) {
+      console.error(`[LLMProvider] Live API call to Gemini/LLM failed:`, err?.message || err);
+      // If user explicitly configured Gemini API, bubble up the error to give clear feedback rather than masking it
+      if (ENV.GEMINI_API_KEY && provider === 'gemini') {
+        throw new Error(`Gemini API Error: ${err?.message || 'Failed to complete request with Gemini API.'}`);
+      }
     }
 
-    // High-fidelity fallback clinical reasoning engine
+    // High-fidelity fallback clinical reasoning engine for zero-key/offline development
     return this.fallbackClinicalEngine(options);
   }
 
@@ -125,31 +127,41 @@ export class LLMProvider {
   }
 
   private static async callGemini(options: LLMCompletionOptions): Promise<LLMResponse> {
-    const systemText = options.messages.find((m) => m.role === 'system')?.content || '';
+    const systemText =
+      options.messages.find((m) => m.role === 'system')?.content || '';
+
     const userMessages = options.messages.filter((m) => m.role !== 'system');
 
-    const conversationPrompt = userMessages
-      .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
-      .join('\n\n');
+    const fullPrompt = userMessages.length > 0
+      ? userMessages
+        .map(
+          (m) =>
+            `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`
+        )
+        .join('\n\n')
+      : options.messages.map((m) => m.content).join('\n\n');
 
     const ai = this.getGeminiClient();
+
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: conversationPrompt,
-      config: {
-        systemInstruction: systemText || undefined,
-        temperature: options.temperature ?? 0.3,
-        maxOutputTokens: options.maxTokens ?? 1500,
-      },
+      model: 'gemini-2.5-flash-lite',
+      contents: fullPrompt,
+      config: systemText
+        ? { systemInstruction: systemText }
+        : undefined,
     });
 
     const text = response.text || '';
+
     return {
       content: text,
-      usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+      usage: {
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+      },
     };
   }
-
   /**
    * Deterministic, clinically structured local intelligence engine.
    * Enables 100% offline, zero-key development, and guarantees well-structured SOAP notes,
