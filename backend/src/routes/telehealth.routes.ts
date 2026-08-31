@@ -8,39 +8,82 @@ const router = Router();
 
 // POST /api/telehealth/session - Initialize or get room for appointment
 router.post('/session', async (req: AuthenticatedRequest, res: Response) => {
-  const { appointmentId } = req.body;
+  const { appointmentId, roomId: customRoomId } = req.body;
 
-  if (!appointmentId) {
-    return res.status(400).json({ error: 'appointmentId is required' });
+  let apt: any = null;
+
+  if (appointmentId) {
+    apt = store.appointments.find((a) => a.id === appointmentId);
   }
 
-  const apt = store.appointments.find((a) => a.id === appointmentId);
-  if (!apt) {
-    return res.status(404).json({ error: 'Appointment not found' });
+  // If no appointmentId provided, look up patient's or doctor's current active appointment
+  if (!apt && req.user) {
+    if (req.user.role === 'patient') {
+      const userFullName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim().toLowerCase();
+      apt = store.appointments.find((a) => 
+        (a.patientId === req.user!.id || (a.patientName && a.patientName.trim().toLowerCase() === userFullName)) &&
+        (a.status === 'scheduled' || a.status === 'in_consultation' || a.status === 'checked_in')
+      );
+    } else if (req.user.role === 'doctor') {
+      const doctorProfile = store.doctors.find((d) => d.userId === req.user!.id || d.id === req.user!.id);
+      apt = store.appointments.find((a) => 
+        (a.doctorId === req.user!.id || (doctorProfile && a.doctorId === doctorProfile.id)) &&
+        (a.status === 'scheduled' || a.status === 'in_consultation' || a.status === 'checked_in')
+      );
+    }
   }
 
-  let session = store.telehealthSessions.find((s) => s.appointmentId === appointmentId);
+  if (!apt && customRoomId) {
+    // Check if session already exists for this room
+    const existingSession = store.telehealthSessions.find((s) => s.roomId === customRoomId);
+    if (existingSession) {
+      apt = store.appointments.find((a) => a.id === existingSession.appointmentId);
+    }
+  }
+
+  const effectiveAppointmentId = apt?.id || appointmentId || 'apt-default-room';
+  const assignedRoomId = apt?.telehealthRoomId || customRoomId || `consultation-${effectiveAppointmentId}`;
+
+  let session = store.telehealthSessions.find((s) => s.appointmentId === effectiveAppointmentId || s.roomId === assignedRoomId);
 
   if (!session) {
     session = {
       id: uuidv4(),
-      appointmentId,
-      roomId: apt.telehealthRoomId || `room-${uuidv4().slice(0, 8)}`,
-      doctorId: apt.doctorId,
-      patientId: apt.patientId,
+      appointmentId: effectiveAppointmentId,
+      roomId: assignedRoomId,
+      doctorId: apt?.doctorId || '30000000-0000-0000-0000-000000000003',
+      patientId: apt?.patientId || req.user?.id || '50000000-0000-0000-0000-000000000002',
       status: 'waiting',
-      recordingConsentGranted: false,
+      recordingConsentGranted: true,
       chatMessages: [],
     };
     store.telehealthSessions.push(session);
   }
 
-  const doctor = store.doctors.find((d) => d.id === session!.doctorId);
-  const patient = store.patients.find((p) => p.id === session!.patientId);
+  // If appointment exists, sync telehealthRoomId
+  if (apt && !apt.telehealthRoomId) {
+    apt.telehealthRoomId = assignedRoomId;
+  }
+
+  // If doctor joins, update session status to 'in_progress'
+  if (req.user && req.user.role === 'doctor') {
+    session.status = 'in_progress';
+    if (apt) {
+      apt.status = 'in_consultation';
+    }
+  }
+
+  const doctor = store.doctors.find((d) => d.id === session!.doctorId || d.userId === session!.doctorId);
+  const doctorUser = doctor ? store.users.find((u) => u.id === doctor.userId) : undefined;
+  
+  let patient = store.patients.find((p) => p.id === session!.patientId || p.userId === session!.patientId);
+  if (!patient && apt?.patient) {
+    patient = apt.patient;
+  }
 
   res.json({
     session,
-    doctor,
+    doctor: doctor ? { ...doctor, user: doctorUser } : undefined,
     patient,
     appointment: apt,
   });
@@ -53,47 +96,41 @@ router.get('/session/:roomId', (req: AuthenticatedRequest, res: Response) => {
     return res.status(404).json({ error: 'Telehealth room not found' });
   }
 
-  const doctor = store.doctors.find((d) => d.id === session.doctorId);
-  const patient = store.patients.find((p) => p.id === session.patientId);
+  const doctor = store.doctors.find((d) => d.id === session.doctorId || d.userId === session.doctorId);
+  const doctorUser = doctor ? store.users.find((u) => u.id === doctor.userId) : undefined;
+  
+  let patient = store.patients.find((p) => p.id === session.patientId || p.userId === session.patientId);
   const appointment = store.appointments.find((a) => a.id === session.appointmentId);
+  if (!patient && appointment?.patient) {
+    patient = appointment.patient;
+  }
 
   res.json({
     session,
-    doctor,
+    doctor: doctor ? { ...doctor, user: doctorUser } : undefined,
     patient,
     appointment,
   });
 });
 
-// POST /api/telehealth/session/:roomId/consent - Update recording consent
-router.post('/session/:roomId/consent', async (req: AuthenticatedRequest, res: Response) => {
+// PUT /api/telehealth/session/:roomId/status - Update session status (e.g. start/end consultation)
+router.put('/session/:roomId/status', async (req: AuthenticatedRequest, res: Response) => {
   const session = store.telehealthSessions.find((s) => s.roomId === req.params.roomId);
   if (!session) {
     return res.status(404).json({ error: 'Telehealth room not found' });
   }
 
-  session.recordingConsentGranted = Boolean(req.body.consent);
-  res.json({ success: true, recordingConsentGranted: session.recordingConsentGranted });
-});
-
-// POST /api/telehealth/session/:roomId/chat - Send in-call chat
-router.post('/session/:roomId/chat', async (req: AuthenticatedRequest, res: Response) => {
-  const session = store.telehealthSessions.find((s) => s.roomId === req.params.roomId);
-  if (!session) {
-    return res.status(404).json({ error: 'Telehealth room not found' });
+  const { status } = req.body;
+  if (status) {
+    session.status = status === 'in_consultation' || status === 'in_progress' ? 'in_progress' : status === 'completed' || status === 'ended' ? 'ended' : 'waiting';
   }
 
-  const { sender, text } = req.body;
-  const message = {
-    sender: sender || req.user?.firstName || 'User',
-    text,
-    timestamp: new Date().toISOString(),
-  };
+  const appointment = store.appointments.find((a) => a.id === session.appointmentId);
+  if (appointment && status) {
+    appointment.status = status === 'completed' || status === 'ended' ? 'completed' : status === 'in_consultation' || status === 'in_progress' ? 'in_consultation' : appointment.status;
+  }
 
-  session.chatMessages = session.chatMessages || [];
-  session.chatMessages.push(message);
-
-  res.status(201).json(message);
+  res.json({ session, appointment });
 });
 
 export default router;
