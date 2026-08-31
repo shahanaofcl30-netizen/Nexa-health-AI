@@ -73,20 +73,33 @@ export const MedAIAssistantModal: React.FC<MedAIAssistantModalProps> = ({ isOpen
         query,
         patientId: selectedPatientId || undefined,
         conversationHistory: messages,
+      }, {
+        timeout: 30000,
       });
+
+      const responseText = res.data?.response?.trim() || 'I processed your clinical query, but no response was returned. Please try rephrasing.';
 
       const assistantMsg: Message = {
         sender: 'assistant',
-        text: res.data.response,
+        text: responseText,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err: any) {
+      let errorText = 'Unable to connect to MedAI service. Please verify your connection.';
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        errorText = 'Request timed out while waiting for Gemini AI response. Please try again.';
+      } else if (err.response?.data?.error) {
+        errorText = `⚠️ MedAI Notice: ${err.response.data.error}`;
+      } else if (err.message) {
+        errorText = `⚠️ Error: ${err.message}`;
+      }
+
       setMessages((prev) => [
         ...prev,
         {
           sender: 'assistant',
-          text: `⚠️ Error processing query: ${err.message}. Please check connection.`,
+          text: errorText,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);

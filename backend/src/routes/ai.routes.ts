@@ -37,35 +37,39 @@ router.get('/audit-logs', (_req: AuthenticatedRequest, res: Response) => {
 router.post('/medai-chat', async (req: AuthenticatedRequest, res: Response) => {
   const { query, patientId, conversationHistory = [] } = req.body;
 
-  if (!query) {
-    return res.status(400).json({ error: 'query is required' });
+  if (!query || !query.trim()) {
+    return res.status(400).json({ error: 'Query message is required' });
   }
 
   let patientContext = '';
   if (patientId) {
-    const patient = store.patients.find((p) => p.id === patientId);
+    const patient = store.patients.find((p) => p.id === patientId || p.userId === patientId);
     if (patient) {
-      const vitals = store.vitals.filter((v) => v.patientId === patientId).slice(0, 3);
-      const notes = store.clinicalNotes.filter((n) => n.patientId === patientId).slice(0, 2);
-      const prescriptions = store.prescriptions.filter((p) => p.patientId === patientId).slice(0, 3);
+      const vitals = store.vitals.filter((v) => v.patientId === patient.id).slice(0, 3);
+      const notes = store.clinicalNotes.filter((n) => n.patientId === patient.id).slice(0, 2);
+      const prescriptions = store.prescriptions.filter((p) => p.patientId === patient.id).slice(0, 3);
 
-      patientContext = `Patient Name: ${patient.firstName} ${patient.lastName}, Age: ${new Date().getFullYear() - new Date(patient.dateOfBirth).getFullYear()}, Allergies: [${patient.allergies.join(', ')}], Chronic Conditions: [${patient.chronicConditions.join(', ')}]. Recent Vitals: ${JSON.stringify(vitals)}. Active Prescriptions: ${JSON.stringify(prescriptions)}. Clinical Notes: ${notes.map((n) => n.assessment).join('; ')}`;
+      patientContext = `Patient Name: ${patient.firstName} ${patient.lastName}, MRN: ${patient.mrn}, Age: ${patient.dateOfBirth ? new Date().getFullYear() - new Date(patient.dateOfBirth).getFullYear() : 'N/A'}, Allergies: [${patient.allergies?.join(', ') || 'None'}], Chronic Conditions: [${patient.chronicConditions?.join(', ') || 'None'}]. Recent Vitals: ${JSON.stringify(vitals)}. Active Prescriptions: ${JSON.stringify(prescriptions)}. Clinical Notes: ${notes.map((n) => n.assessment).join('; ')}`;
     }
   }
 
-  const systemPrompt = `You are MedAI, an advanced healthcare assistant for Nexa Health AI.
-You provide evidence-based clinical explanations, drug information, and patient context synthesis to doctors and patients.
-Always maintain high professional clarity.
-CRITICAL SAFETY RULE: You are not a direct replacement for physician evaluation. Always include the required clinical disclaimer.
-${patientContext ? `\nCurrent Active Patient Context:\n${patientContext}` : ''}`;
+  const userRole = req.user?.role || 'clinician';
+  const userName = req.user?.firstName ? `${req.user.firstName} ${req.user.lastName || ''}`.trim() : req.user?.email ? req.user.email.split('@')[0] : 'Healthcare User';
+
+  const systemPrompt = `You are MedAI, an advanced medical AI assistant for Nexa Health AI.
+Current User Context: ${userName} (Role: ${userRole}).
+You provide evidence-based clinical explanations, pharmacotherapy guidance, laboratory interpretation, and synthesized patient record insights.
+Maintain a compassionate, precise, professional, and clear tone. Format key findings with bullet points where appropriate.
+CRITICAL SAFETY RULE: You are an assistive intelligence tool. Always remind the user that AI guidance does not replace direct clinical evaluation or emergency services.
+${patientContext ? `\nCurrent Active Patient EHR Record:\n${patientContext}` : ''}`;
 
   const messages: any[] = [
     { role: 'system', content: systemPrompt },
-    ...conversationHistory.slice(-6).map((msg: any) => ({
+    ...conversationHistory.slice(-8).map((msg: any) => ({
       role: msg.sender === 'user' ? 'user' : 'assistant',
       content: msg.text,
     })),
-    { role: 'user', content: query },
+    { role: 'user', content: query.trim() },
   ];
 
   try {
@@ -74,6 +78,8 @@ ${patientContext ? `\nCurrent Active Patient Context:\n${patientContext}` : ''}`
       temperature: 0.3,
     });
 
+    const responseText = completion.content?.trim() || 'I processed your query, but could not generate a response. Please rephrase or specify a clinical focus area.';
+
     await AgentAuditLogger.logAction({
       agentName: 'MedAI_Assistant',
       action: 'MEDAI_CONVERSATION_QUERY',
@@ -81,16 +87,17 @@ ${patientContext ? `\nCurrent Active Patient Context:\n${patientContext}` : ''}`
       entityId: patientId,
       userId: req.user?.id,
       inputSummary: query.slice(0, 150),
-      outputSummary: completion.content.slice(0, 150),
+      outputSummary: responseText.slice(0, 150),
       safetyCheckPassed: true,
     });
 
     res.json({
-      response: completion.content,
+      response: responseText,
       clinicalDisclaimer: CLINICAL_DISCLAIMER,
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('[MedAI Chat Route Error]:', err);
+    res.status(500).json({ error: err.message || 'An error occurred while generating MedAI response.' });
   }
 });
 

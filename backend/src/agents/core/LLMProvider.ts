@@ -1,3 +1,4 @@
+import { GoogleGenAI } from '@google/genai';
 import { ENV } from '../../config/env';
 
 export interface LLMMessage {
@@ -22,6 +23,15 @@ export interface LLMResponse {
 }
 
 export class LLMProvider {
+  private static geminiClient: GoogleGenAI | null = null;
+
+  private static getGeminiClient(): GoogleGenAI {
+    if (!this.geminiClient) {
+      this.geminiClient = new GoogleGenAI({ apiKey: ENV.GEMINI_API_KEY });
+    }
+    return this.geminiClient;
+  }
+
   /**
    * Dispatches the completion request to the configured provider (OpenAI / Anthropic / Gemini / Mock Fallback)
    */
@@ -29,7 +39,9 @@ export class LLMProvider {
     const provider = ENV.LLM_PROVIDER;
 
     try {
-      if (provider === 'openai' && ENV.OPENAI_API_KEY) {
+      if (ENV.GEMINI_API_KEY && (provider === 'gemini' || provider === 'mock' || !provider)) {
+        return await this.callGemini(options);
+      } else if (provider === 'openai' && ENV.OPENAI_API_KEY) {
         return await this.callOpenAI(options);
       } else if (provider === 'anthropic' && ENV.ANTHROPIC_API_KEY) {
         return await this.callAnthropic(options);
@@ -37,7 +49,7 @@ export class LLMProvider {
         return await this.callGemini(options);
       }
     } catch (err) {
-      console.warn(`[LLMProvider] Live API call to '${provider}' failed, falling back to clinical intelligence engine:`, err);
+      console.warn(`[LLMProvider] Live API call to Gemini/LLM failed, falling back to clinical intelligence engine:`, err);
     }
 
     // High-fidelity fallback clinical reasoning engine
@@ -114,28 +126,24 @@ export class LLMProvider {
 
   private static async callGemini(options: LLMCompletionOptions): Promise<LLMResponse> {
     const systemText = options.messages.find((m) => m.role === 'system')?.content || '';
-    const userText = options.messages
-      .filter((m) => m.role !== 'system')
-      .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+    const userMessages = options.messages.filter((m) => m.role !== 'system');
+
+    const conversationPrompt = userMessages
+      .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
       .join('\n\n');
 
-    const prompt = `${systemText ? `[System Instructions]\n${systemText}\n\n` : ''}${userText}`;
-
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${ENV.GEMINI_API_KEY}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-      }),
+    const ai = this.getGeminiClient();
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: conversationPrompt,
+      config: {
+        systemInstruction: systemText || undefined,
+        temperature: options.temperature ?? 0.3,
+        maxOutputTokens: options.maxTokens ?? 1500,
+      },
     });
 
-    if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
-    }
-
-    const data = (await response.json()) as any;
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const text = response.text || '';
     return {
       content: text,
       usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },

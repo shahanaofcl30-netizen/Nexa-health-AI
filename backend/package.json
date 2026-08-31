@@ -10,7 +10,7 @@
     "test": "node --test"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.112.4",
+    "@google/genai": "^2.19.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
