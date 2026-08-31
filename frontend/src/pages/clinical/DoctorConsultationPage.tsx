@@ -17,6 +17,7 @@ import {
   Stethoscope,
   Trash2,
   User,
+  Video,
   X,
 } from 'lucide-react';
 import api from '../../services/api';
@@ -232,12 +233,24 @@ export const DoctorConsultationPage: React.FC = () => {
           </p>
         </div>
 
-        {appointment?.hospital && (
-          <div className="flex items-center space-x-2 px-3.5 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-xs">
-            <Building2 className="w-4 h-4 text-brand-400" />
-            <span className="font-bold text-white">{appointment.hospital.name}</span>
-          </div>
-        )}
+        <div className="flex items-center space-x-2">
+          {appointment?.hospital && (
+            <div className="flex items-center space-x-2 px-3.5 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-xs">
+              <Building2 className="w-4 h-4 text-brand-400" />
+              <span className="font-bold text-white">{appointment.hospital.name}</span>
+            </div>
+          )}
+
+          {selectedAppointmentId && (
+            <button
+              onClick={() => navigate(`/telehealth?appointmentId=${selectedAppointmentId}&room=${appointment?.telehealthRoomId || `consultation_${selectedAppointmentId}`}`)}
+              className="flex items-center space-x-2 px-4 py-2 rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold text-xs shadow-md transition-all"
+            >
+              <Video className="w-4 h-4" />
+              <span>Join Live Video Call</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Mandatory Clinical Disclaimer Banner */}

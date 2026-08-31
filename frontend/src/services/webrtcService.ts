@@ -191,41 +191,49 @@ export class WebRTCService {
       });
       this.unsubscribers.push(unsubCandidates);
     } else {
-      console.log('[WEBRTC] Doctor joining room and waiting for Patient Offer...');
-      const docSnap = await getDoc(consultationRef);
+      console.log('[WEBRTC] Doctor joining room and waiting for or answering Patient Offer...');
 
       const handleOffer = async (data: any) => {
         if (data?.offer && !this.pc?.currentRemoteDescription) {
           console.log('[WEBRTC] Doctor received patient offer, creating answer...');
-          await this.pc!.setRemoteDescription(new RTCSessionDescription(data.offer));
-          const answerDescription = await this.pc!.createAnswer();
-          await this.pc!.setLocalDescription(answerDescription);
+          try {
+            await this.pc!.setRemoteDescription(new RTCSessionDescription(data.offer));
+            const answerDescription = await this.pc!.createAnswer();
+            await this.pc!.setLocalDescription(answerDescription);
 
-          const answer = {
-            type: answerDescription.type,
-            sdp: answerDescription.sdp,
-          };
+            const answer = {
+              type: answerDescription.type,
+              sdp: answerDescription.sdp,
+            };
 
-          await updateDoc(consultationRef, {
-            answer,
-            status: 'in_progress',
-            doctorJoinedAt: serverTimestamp(),
-          });
-          console.log('[WEBRTC] Doctor answer saved to Firestore');
+            await updateDoc(consultationRef, {
+              answer,
+              status: 'in_progress',
+              doctorJoinedAt: serverTimestamp(),
+            });
+            console.log('[WEBRTC] Doctor answer saved to Firestore');
+          } catch (e) {
+            console.error('[WEBRTC] Error processing offer / answer:', e);
+          }
         }
       };
 
-      if (docSnap.exists() && docSnap.data()?.offer) {
-        await handleOffer(docSnap.data());
-      } else {
-        const unsubDoc = onSnapshot(consultationRef, async (snapshot) => {
-          const data = snapshot.data();
-          if (data?.offer) {
-            await handleOffer(data);
-          }
-        });
-        this.unsubscribers.push(unsubDoc);
+      try {
+        const docSnap = await getDoc(consultationRef);
+        if (docSnap.exists() && docSnap.data()?.offer) {
+          await handleOffer(docSnap.data());
+        }
+      } catch (e) {
+        console.warn('Doc fetch error, continuing with onSnapshot:', e);
       }
+
+      const unsubDoc = onSnapshot(consultationRef, async (snapshot) => {
+        const data = snapshot.data();
+        if (data?.offer && !this.pc?.currentRemoteDescription) {
+          await handleOffer(data);
+        }
+      });
+      this.unsubscribers.push(unsubDoc);
 
       // Listen for Patient's ICE candidates
       const unsubCandidates = onSnapshot(patientCandidatesRef, (snapshot) => {
