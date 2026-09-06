@@ -56,27 +56,15 @@ interface AuthState {
 }
 
 const getInitialUser = (): UserProfile | null => {
-  const savedUser = localStorage.getItem('nexa_user_profile') || sessionStorage.getItem('nexa_user_profile');
-  if (savedUser) {
-    try {
-      return JSON.parse(savedUser);
-    } catch {
-      // ignore
-    }
-  }
-  return null;
+  return null; // Do not blindly trust localStorage initially
 };
 
 const getInitialToken = (): string | null => {
-  return localStorage.getItem('nexa_token') || sessionStorage.getItem('nexa_token') || null;
+  return null; // Do not blindly trust localStorage initially
 };
 
 const getInitialRole = (): UserRole => {
-  return (
-    (localStorage.getItem('nexa_active_role') as UserRole) ||
-    (sessionStorage.getItem('nexa_active_role') as UserRole) ||
-    'patient'
-  );
+  return 'patient'; // Do not blindly trust localStorage initially
 };
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -583,23 +571,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   initAuthListener: () => {
     let unsubscribe = () => {};
 
-    const fallbackInit = () => {
-      const savedToken = localStorage.getItem('nexa_token');
-      const savedProfileStr = localStorage.getItem('nexa_user_profile');
-      if (savedToken && savedProfileStr) {
-        try {
-          const savedProfile = JSON.parse(savedProfileStr);
-          set({
-            currentUser: savedProfile,
-            activeRole: savedProfile.role,
-            token: savedToken,
-            isInitialized: true,
-          });
+    const fallbackInit = async () => {
+      const savedToken = localStorage.getItem('nexa_token') || sessionStorage.getItem('nexa_token');
+      if (savedToken) {
+        await get().fetchCurrentUser(); // Validate using existing backend logic
+        const current = get().currentUser;
+        if (current) {
+          set({ token: savedToken, isInitialized: true });
           return;
-        } catch {
-          // ignore
         }
       }
+      
+      // If validation failed or no token, explicitly clear state
+      get().logout();
       set({ isInitialized: true });
     };
 
@@ -610,25 +594,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             unsubscribe = onAuthStateChanged(auth, async (user) => {
               if (user) {
                 const savedToken = localStorage.getItem('nexa_token');
-                const savedProfileStr = localStorage.getItem('nexa_user_profile');
 
-                if (savedToken && savedProfileStr) {
-                  try {
-                    const savedProfile = JSON.parse(savedProfileStr);
-                    set({
-                      currentUser: savedProfile,
-                      activeRole: savedProfile.role,
-                      token: savedToken,
-                      isInitialized: true,
-                    });
+                if (savedToken) {
+                  await get().fetchCurrentUser();
+                  if (get().currentUser) {
+                    set({ token: savedToken, isInitialized: true });
                     return;
-                  } catch {
-                    // ignore
                   }
                 }
 
+                // If Firebase user exists but local token is invalid/missing, exchange it
                 try {
-                  const firebaseToken = await user.getIdToken();
+                  const firebaseToken = await user.getIdToken(true);
                   const res = await api.post('/auth/firebase-exchange', { firebaseToken });
                   const { token, user: userProfile } = res.data;
 

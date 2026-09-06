@@ -1,17 +1,4 @@
-import {
-  doc,
-  setDoc,
-  getDoc,
-  updateDoc,
-  collection,
-  addDoc,
-  onSnapshot,
-  query,
-  orderBy,
-  Unsubscribe,
-  serverTimestamp,
-} from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { io, Socket } from 'socket.io-client';
 
 export const ICE_SERVERS: RTCConfiguration = {
   iceServers: [
@@ -35,9 +22,10 @@ export class WebRTCService {
   private pc: RTCPeerConnection | null = null;
   private localStream: MediaStream | null = null;
   private remoteStream: MediaStream | null = null;
-  private unsubscribers: Unsubscribe[] = [];
   private roomId: string | null = null;
   private role: 'patient' | 'doctor' = 'patient';
+  private socket: Socket | null = null;
+  private userId: string = '';
 
   public onRemoteStream?: (stream: MediaStream) => void;
   public onConnectionStateChange?: (state: string) => void;
@@ -68,22 +56,37 @@ export class WebRTCService {
   ): Promise<void> {
     this.roomId = roomId;
     this.role = role;
+    this.userId = role === 'patient' ? (metadata.patientId || 'patient') : (metadata.doctorId || 'doctor');
 
     console.log(`[WEBRTC] Starting session for room: ${roomId} as role: ${role}`);
-    if (this.onConnectionStateChange) this.onConnectionStateChange('Connecting...');
+    if (this.onConnectionStateChange) this.onConnectionStateChange('Connecting to signaling server...');
 
-    // 1. Initialize PeerConnection
+    // 1. Initialize Socket.IO connection
+    // Extract base URL from VITE_API_BASE_URL (removing /api if present)
+    let backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    if (backendUrl.endsWith('/api')) {
+      backendUrl = backendUrl.slice(0, -4);
+    }
+    
+    this.socket = io(backendUrl);
+
+    this.socket.on('connect', () => {
+      console.log('[WEBRTC] Connected to signaling server');
+      this.socket?.emit('join-room', roomId, this.userId);
+    });
+
+    // 2. Initialize PeerConnection
     this.pc = new RTCPeerConnection(ICE_SERVERS);
     this.remoteStream = new MediaStream();
 
-    // 2. Attach local tracks
+    // 3. Attach local tracks
     const stream = await this.getMediaStream();
     stream.getTracks().forEach((track) => {
       console.log(`[WEBRTC] Adding local ${track.kind} track`);
       this.pc!.addTrack(track, stream);
     });
 
-    // 3. Listen for remote tracks
+    // 4. Listen for remote tracks
     this.pc.ontrack = (event) => {
       console.log('[WEBRTC] Remote track received:', event.streams);
       if (this.remoteStream) {
@@ -99,7 +102,7 @@ export class WebRTCService {
       }
     };
 
-    // 4. Listen for connection state changes
+    // 5. Listen for connection state changes
     this.pc.onconnectionstatechange = () => {
       const state = this.pc?.connectionState || 'new';
       console.log(`[WEBRTC] RTCPeerConnection state: ${state}`);
@@ -124,154 +127,113 @@ export class WebRTCService {
       }
     };
 
-    // 5. Firestore Document References
-    const consultationRef = doc(db, 'consultations', roomId);
-    const patientCandidatesRef = collection(db, 'consultations', roomId, 'patientCandidates');
-    const doctorCandidatesRef = collection(db, 'consultations', roomId, 'doctorCandidates');
-
     // 6. Handle ICE Candidates
     this.pc.onicecandidate = (event) => {
       if (event.candidate) {
         console.log(`[WEBRTC] Generated ICE candidate for ${role}`);
-        const candidateData = event.candidate.toJSON();
-        if (role === 'patient') {
-          addDoc(patientCandidatesRef, candidateData);
-        } else {
-          addDoc(doctorCandidatesRef, candidateData);
-        }
+        this.socket?.emit('signal-candidate', {
+          roomId,
+          candidate: event.candidate.toJSON(),
+          senderId: this.userId,
+        });
       }
     };
 
-    // 7. Role Specific Signaling: Patient creates Offer, Doctor creates Answer
-    if (role === 'patient') {
-      console.log('[WEBRTC] Patient creating initial WebRTC Offer...');
-      const offerDescription = await this.pc.createOffer({
-        offerToReceiveAudio: true,
-        offerToReceiveVideo: true,
-      });
-      await this.pc.setLocalDescription(offerDescription);
-
-      const offer = {
-        sdp: offerDescription.sdp,
-        type: offerDescription.type,
-      };
-
-      await setDoc(
-        consultationRef,
-        {
-          ...metadata,
-          roomId,
-          status: 'waiting_for_doctor',
-          offer,
-          createdAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
-
-      // Listen for Doctor's Answer
-      const unsubDoc = onSnapshot(consultationRef, (snapshot) => {
-        const data = snapshot.data();
-        if (this.pc && !this.pc.currentRemoteDescription && data?.answer) {
-          console.log('[WEBRTC] Patient received doctor WebRTC answer');
-          const answerDescription = new RTCSessionDescription(data.answer);
-          this.pc.setRemoteDescription(answerDescription);
-        }
-      });
-      this.unsubscribers.push(unsubDoc);
-
-      // Listen for Doctor's ICE candidates
-      const unsubCandidates = onSnapshot(doctorCandidatesRef, (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-          if (change.type === 'added') {
-            const candidate = new RTCIceCandidate(change.doc.data());
-            console.log('[WEBRTC] Patient adding doctor ICE candidate');
-            this.pc?.addIceCandidate(candidate);
-          }
-        });
-      });
-      this.unsubscribers.push(unsubCandidates);
-    } else {
-      console.log('[WEBRTC] Doctor joining room and waiting for or answering Patient Offer...');
-
-      const handleOffer = async (data: any) => {
-        if (data?.offer && !this.pc?.currentRemoteDescription) {
-          console.log('[WEBRTC] Doctor received patient offer, creating answer...');
-          try {
-            await this.pc!.setRemoteDescription(new RTCSessionDescription(data.offer));
-            const answerDescription = await this.pc!.createAnswer();
-            await this.pc!.setLocalDescription(answerDescription);
-
-            const answer = {
-              type: answerDescription.type,
-              sdp: answerDescription.sdp,
-            };
-
-            await updateDoc(consultationRef, {
-              answer,
-              status: 'in_progress',
-              doctorJoinedAt: serverTimestamp(),
-            });
-            console.log('[WEBRTC] Doctor answer saved to Firestore');
-          } catch (e) {
-            console.error('[WEBRTC] Error processing offer / answer:', e);
-          }
-        }
-      };
-
+    // 7. Socket.IO Listeners for Signaling
+    this.socket.on('signal-offer', async (data: { roomId: string; sdp: any; senderId: string }) => {
+      console.log('[WEBRTC] Received offer from', data.senderId);
+      if (data.senderId === this.userId) return; // Ignore own messages
+      
       try {
-        const docSnap = await getDoc(consultationRef);
-        if (docSnap.exists() && docSnap.data()?.offer) {
-          await handleOffer(docSnap.data());
+        await this.pc!.setRemoteDescription(new RTCSessionDescription(data.sdp));
+        const answerDescription = await this.pc!.createAnswer();
+        await this.pc!.setLocalDescription(answerDescription);
+
+        this.socket?.emit('signal-answer', {
+          roomId,
+          sdp: answerDescription,
+          senderId: this.userId,
+        });
+      } catch (e) {
+        console.error('[WEBRTC] Error processing offer:', e);
+      }
+    });
+
+    this.socket.on('signal-answer', async (data: { roomId: string; sdp: any; senderId: string }) => {
+      console.log('[WEBRTC] Received answer from', data.senderId);
+      if (data.senderId === this.userId) return;
+      
+      try {
+        if (!this.pc!.currentRemoteDescription) {
+          await this.pc!.setRemoteDescription(new RTCSessionDescription(data.sdp));
         }
       } catch (e) {
-        console.warn('Doc fetch error, continuing with onSnapshot:', e);
+        console.error('[WEBRTC] Error processing answer:', e);
       }
+    });
 
-      const unsubDoc = onSnapshot(consultationRef, async (snapshot) => {
-        const data = snapshot.data();
-        if (data?.offer && !this.pc?.currentRemoteDescription) {
-          await handleOffer(data);
+    this.socket.on('signal-candidate', async (data: { roomId: string; candidate: any; senderId: string }) => {
+      console.log('[WEBRTC] Received ICE candidate from', data.senderId);
+      if (data.senderId === this.userId) return;
+
+      try {
+        if (data.candidate) {
+          await this.pc!.addIceCandidate(new RTCIceCandidate(data.candidate));
         }
-      });
-      this.unsubscribers.push(unsubDoc);
-
-      // Listen for Patient's ICE candidates
-      const unsubCandidates = onSnapshot(patientCandidatesRef, (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-          if (change.type === 'added') {
-            const candidate = new RTCIceCandidate(change.doc.data());
-            console.log('[WEBRTC] Doctor adding patient ICE candidate');
-            this.pc?.addIceCandidate(candidate);
-          }
-        });
-      });
-      this.unsubscribers.push(unsubCandidates);
-    }
+      } catch (e) {
+        console.error('[WEBRTC] Error processing ICE candidate:', e);
+      }
+    });
 
     // 8. In-Call Chat Listener
-    const messagesRef = collection(db, 'consultations', roomId, 'messages');
-    const messagesQuery = query(messagesRef, orderBy('timestamp', 'asc'));
-    const unsubChat = onSnapshot(messagesQuery, (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added') {
-          const data = change.doc.data() as ChatMessage;
-          if (this.onChatMessage) {
-            this.onChatMessage({ ...data, id: change.doc.id });
-          }
-        }
-      });
+    this.socket.on('telehealth-chat', (message: ChatMessage) => {
+      // Don't echo own messages again, we already showed them optimistically
+      if (message.senderRole !== this.role || message.sender !== (role === 'patient' ? metadata.patientName : metadata.doctorName)) {
+         if (this.onChatMessage) {
+           this.onChatMessage(message);
+         }
+      }
     });
-    this.unsubscribers.push(unsubChat);
+
+    // 9. When another user joins, the person already in the room creates the offer
+    this.socket.on('user-joined', async (data: { userId: string, socketId: string }) => {
+      console.log('[WEBRTC] User joined room:', data.userId);
+      try {
+        const offerDescription = await this.pc!.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true,
+        });
+        await this.pc!.setLocalDescription(offerDescription);
+
+        this.socket?.emit('signal-offer', {
+          roomId,
+          sdp: offerDescription,
+          senderId: this.userId,
+        });
+      } catch (e) {
+        console.error('[WEBRTC] Error creating offer:', e);
+      }
+    });
   }
 
   public async sendMessage(sender: string, text: string): Promise<void> {
-    if (!this.roomId || !text.trim()) return;
-    const messagesRef = collection(db, 'consultations', this.roomId, 'messages');
-    await addDoc(messagesRef, {
+    if (!this.roomId || !text.trim() || !this.socket) return;
+    const message: ChatMessage = {
+      id: Math.random().toString(36).substr(2, 9),
       sender,
       senderRole: this.role,
       text: text.trim(),
       timestamp: new Date().toISOString(),
+    };
+    
+    // Optimistically show locally
+    if (this.onChatMessage) {
+      this.onChatMessage(message);
+    }
+
+    this.socket.emit('telehealth-chat', {
+      roomId: this.roomId,
+      message,
     });
   }
 
@@ -297,20 +259,11 @@ export class WebRTCService {
 
   public async endSession(): Promise<void> {
     console.log('[WEBRTC] Ending telehealth session and cleaning up listeners...');
-    if (this.roomId) {
-      try {
-        const consultationRef = doc(db, 'consultations', this.roomId);
-        await updateDoc(consultationRef, {
-          status: 'ended',
-          endedAt: serverTimestamp(),
-        });
-      } catch (e) {
-        console.warn('Error updating end status in Firestore:', e);
-      }
+    
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
     }
-
-    this.unsubscribers.forEach((unsub) => unsub());
-    this.unsubscribers = [];
 
     if (this.localStream) {
       this.localStream.getTracks().forEach((track) => track.stop());

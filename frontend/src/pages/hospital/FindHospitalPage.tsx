@@ -144,24 +144,33 @@ export const FindHospitalPage: React.FC = () => {
 
   const filteredHospitals = useMemo(() => {
     return hospitals.filter((h) => {
+      const sQuery = (searchQuery || '').trim().toLowerCase();
+      const sDistrict = (selectedDistrict || 'all').trim().toLowerCase();
+      const sType = (selectedType || 'all').trim().toLowerCase();
+      const sDept = (selectedDept || 'all').trim().toLowerCase();
+      
+      const hName = (h.name || '').toLowerCase();
+      const hDistrict = (h.district || '').toLowerCase();
+      const hCity = (h.city || '').toLowerCase();
+      const hAddress = (h.address || '').toLowerCase();
+      const hType = (h.hospitalType || '').toLowerCase();
+      
+      const hSpecs = Array.isArray(h.specializations) ? h.specializations : [];
+      const hDepts = Array.isArray(h.departments) ? h.departments : [];
+
       const matchesSearch =
-        h.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (h.district && h.district.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        h.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        h.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (h.hospitalType && h.hospitalType.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        h.specializations.some((s) => s.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        h.departments.some((d) => d.toLowerCase().includes(searchQuery.toLowerCase()));
+        sQuery === '' ||
+        hName.includes(sQuery) ||
+        hDistrict.includes(sQuery) ||
+        hCity.includes(sQuery) ||
+        hAddress.includes(sQuery) ||
+        hType.includes(sQuery) ||
+        hSpecs.some((s) => (s || '').toLowerCase().includes(sQuery)) ||
+        hDepts.some((d) => (d || '').toLowerCase().includes(sQuery));
 
-      const matchesDistrict =
-        selectedDistrict === 'all' || (h.district && h.district.toLowerCase() === selectedDistrict.toLowerCase());
-
-      const matchesType =
-        selectedType === 'all' || (h.hospitalType && h.hospitalType.toLowerCase() === selectedType.toLowerCase());
-
-      const matchesDept =
-        selectedDept === 'all' || h.departments.some((d) => d.toLowerCase().includes(selectedDept.toLowerCase()));
-
+      const matchesDistrict = sDistrict === 'all' || hDistrict === sDistrict;
+      const matchesType = sType === 'all' || hType === sType;
+      const matchesDept = sDept === 'all' || hDepts.some((d) => (d || '').toLowerCase().includes(sDept));
       const matchesEmergency = !emergencyOnly || h.emergencyAvailable === true;
 
       return matchesSearch && matchesDistrict && matchesType && matchesDept && matchesEmergency;

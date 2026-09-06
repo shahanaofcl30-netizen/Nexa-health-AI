@@ -5,7 +5,7 @@ import { AlertCircle, Loader2, ArrowRight, UserPlus } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login, loginWithGoogle, isLoading, currentUser } = useAuthStore();
+  const { login, loginWithGoogle, isLoading, currentUser, isInitialized } = useAuthStore();
 
   const [emailOrDoctorId, setEmailOrDoctorId] = useState('');
   const [password, setPassword] = useState('');
@@ -51,6 +51,16 @@ export const LoginPage: React.FC = () => {
     }
   };
 
+  // Wait for auth verification to complete to avoid flickering
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  // If fully initialized and a valid user exists, redirect
   if (currentUser) {
     navigate('/', { replace: true });
     return null;

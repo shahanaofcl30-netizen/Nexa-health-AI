@@ -355,10 +355,10 @@ export const BillingManagementPage: React.FC = () => {
                 <select
                   value={agentPatientId}
                   onChange={(e) => setAgentPatientId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl glass-input text-white bg-slate-900 focus:outline-none"
+                  className="w-full px-3 py-2 rounded-xl text-slate-200 bg-slate-900 border border-slate-700 focus:outline-none focus:border-purple-500"
                 >
                   {patients.map((p) => (
-                    <option key={p.id} value={p.id}>
+                    <option key={p.id} value={p.id} className="bg-slate-900 text-slate-200">
                       {p.firstName} {p.lastName} ({p.mrn})
                     </option>
                   ))}
@@ -371,7 +371,7 @@ export const BillingManagementPage: React.FC = () => {
                   rows={4}
                   value={agentEncounterDetails}
                   onChange={(e) => setAgentEncounterDetails(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl glass-input text-white focus:outline-none"
+                  className="w-full px-3 py-2 rounded-xl text-slate-200 bg-slate-900 border border-slate-700 focus:outline-none focus:border-purple-500"
                 />
               </div>
 
