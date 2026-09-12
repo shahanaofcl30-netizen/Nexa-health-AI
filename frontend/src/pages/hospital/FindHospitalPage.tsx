@@ -66,8 +66,19 @@ export const FindHospitalPage: React.FC = () => {
           api.get('/hospitals'),
         ]);
 
+        console.log('[Hospitals] RAW hospRes.data type:', typeof hospRes.data);
+        console.log('[Hospitals] RAW hospRes.data isArray?', Array.isArray(hospRes.data));
+        console.log('[Hospitals] RAW hospRes.data length/keys:', Array.isArray(hospRes.data) ? hospRes.data.length : Object.keys(hospRes.data || {}));
+
         const distData = Array.isArray(distRes.data) ? distRes.data : (distRes.data?.data || distRes.data?.districts || []);
         const hospData = Array.isArray(hospRes.data) ? hospRes.data : (hospRes.data?.data || hospRes.data?.hospitals || []);
+
+        console.log('[Hospitals] API count parsed hospData:', hospData.length);
+        
+        // Also log a sample hospital district field to ensure it exists
+        if (hospData.length > 0) {
+          console.log('[Hospitals] Sample hospital 1 district:', hospData[0].district, 'name:', hospData[0].name);
+        }
 
         setDistricts(distData);
         setHospitals(hospData);
@@ -175,7 +186,6 @@ export const FindHospitalPage: React.FC = () => {
         hSpecs.some((s) => (s || '').toLowerCase().includes(sQuery)) ||
         hDepts.some((d) => (d || '').toLowerCase().includes(sQuery));
 
-      // Handle mismatch like "Coimbatore" vs "Coimbatore District"
       const matchesDistrict = sDistrict === 'all' || (hDistrict.length > 0 && (hDistrict === sDistrict || hDistrict.includes(sDistrict) || sDistrict.includes(hDistrict)));
       
       const matchesType = sType === 'all' || hType === sType;
@@ -185,6 +195,12 @@ export const FindHospitalPage: React.FC = () => {
       return matchesSearch && matchesDistrict && matchesType && matchesDept && matchesEmergency;
     });
   }, [hospitals, searchQuery, selectedDistrict, selectedType, selectedDept, emergencyOnly]);
+
+  useEffect(() => {
+    console.log('[Hospitals] Filtered count updated:', filteredHospitals.length);
+    console.log('[Hospitals] Current selected district:', selectedDistrict);
+    console.log('[Hospitals] Total hospitals state count:', hospitals.length);
+  }, [filteredHospitals, selectedDistrict, hospitals]);
 
   const hospitalTypes: HospitalType[] = [
     'Government Hospital',
