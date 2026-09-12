@@ -71,15 +71,16 @@ export const PharmacyFinderPage: React.FC = () => {
       setLoading(true);
       try {
         const hospRes = await api.get('/hospitals');
-        setHospitals(hospRes.data);
+        const hospData = Array.isArray(hospRes.data) ? hospRes.data : (hospRes.data?.data || hospRes.data?.hospitals || []);
+        setHospitals(hospData);
 
         // Determine active hospital
         let activeHosp: Hospital | null = null;
         if (hospitalIdParam) {
-          activeHosp = hospRes.data.find((h: Hospital) => h.id === hospitalIdParam) || null;
+          activeHosp = hospData.find((h: Hospital) => h.id === hospitalIdParam) || null;
         }
-        if (!activeHosp && hospRes.data.length > 0) {
-          activeHosp = hospRes.data[0];
+        if (!activeHosp && hospData.length > 0) {
+          activeHosp = hospData[0];
         }
         setSelectedHospital(activeHosp);
 
@@ -100,7 +101,8 @@ export const PharmacyFinderPage: React.FC = () => {
         }
         
         const pharmRes = await api.get(`/pharmacies?${queryParams.toString()}`);
-        setRawPharmacies(pharmRes.data);
+        const pharmData = Array.isArray(pharmRes.data) ? pharmRes.data : (pharmRes.data?.data || pharmRes.data?.pharmacies || []);
+        setRawPharmacies(pharmData);
       } catch (err) {
         console.error('Failed to load pharmacies and hospitals:', err);
       } finally {
@@ -266,7 +268,8 @@ export const PharmacyFinderPage: React.FC = () => {
       queryParams.set('hospitalId', found.id);
 
       const res = await api.get(`/pharmacies?${queryParams.toString()}`);
-      setRawPharmacies(res.data);
+      const pharmData = Array.isArray(res.data) ? res.data : (res.data?.data || res.data?.pharmacies || []);
+      setRawPharmacies(pharmData);
     } catch (err) {
       console.error('Failed to update pharmacies for new hospital:', err);
     } finally {

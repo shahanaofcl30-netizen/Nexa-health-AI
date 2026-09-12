@@ -66,10 +66,13 @@ export const FindHospitalPage: React.FC = () => {
           api.get('/hospitals'),
         ]);
 
-        setDistricts(distRes.data);
-        setHospitals(hospRes.data);
-        if (hospRes.data.length > 0) {
-          setSelectedHospital(hospRes.data[0]);
+        const distData = Array.isArray(distRes.data) ? distRes.data : (distRes.data?.data || distRes.data?.districts || []);
+        const hospData = Array.isArray(hospRes.data) ? hospRes.data : (hospRes.data?.data || hospRes.data?.hospitals || []);
+
+        setDistricts(distData);
+        setHospitals(hospData);
+        if (hospData.length > 0) {
+          setSelectedHospital(hospData[0]);
         }
       } catch (err) {
         console.error('Failed to load hospitals directory:', err);
@@ -101,9 +104,10 @@ export const FindHospitalPage: React.FC = () => {
 
         try {
           const res = await api.get(`/hospitals?lat=${lat}&lng=${lng}`);
-          setHospitals(res.data);
-          if (res.data.length > 0) {
-            setSelectedHospital(res.data[0]);
+          const hospData = Array.isArray(res.data) ? res.data : (res.data?.data || res.data?.hospitals || []);
+          setHospitals(hospData);
+          if (hospData.length > 0) {
+            setSelectedHospital(hospData[0]);
           }
         } catch (err) {
           console.error('Failed to query hospitals by location:', err);
@@ -126,7 +130,7 @@ export const FindHospitalPage: React.FC = () => {
     setLoadingDoctors(true);
     try {
       const res = await api.get(`/hospitals/${hospital.id}/doctors`);
-      setHospitalDoctorsList(res.data);
+      setHospitalDoctorsList(Array.isArray(res.data) ? res.data : (res.data?.data || res.data?.doctors || []));
     } catch (err) {
       console.error('Failed to load hospital doctors:', err);
     } finally {
@@ -143,6 +147,9 @@ export const FindHospitalPage: React.FC = () => {
   };
 
   const filteredHospitals = useMemo(() => {
+    // Safety check: ensure hospitals is an array
+    if (!Array.isArray(hospitals)) return [];
+
     return hospitals.filter((h) => {
       const sQuery = (searchQuery || '').trim().toLowerCase();
       const sDistrict = (selectedDistrict || 'all').trim().toLowerCase();
@@ -168,7 +175,9 @@ export const FindHospitalPage: React.FC = () => {
         hSpecs.some((s) => (s || '').toLowerCase().includes(sQuery)) ||
         hDepts.some((d) => (d || '').toLowerCase().includes(sQuery));
 
-      const matchesDistrict = sDistrict === 'all' || hDistrict === sDistrict;
+      // Handle mismatch like "Coimbatore" vs "Coimbatore District"
+      const matchesDistrict = sDistrict === 'all' || hDistrict === sDistrict || hDistrict.includes(sDistrict) || sDistrict.includes(hDistrict);
+      
       const matchesType = sType === 'all' || hType === sType;
       const matchesDept = sDept === 'all' || hDepts.some((d) => (d || '').toLowerCase().includes(sDept));
       const matchesEmergency = !emergencyOnly || h.emergencyAvailable === true;

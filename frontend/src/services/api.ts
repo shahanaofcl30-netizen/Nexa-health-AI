@@ -22,4 +22,24 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Global Response Interceptor
+api.interceptors.response.use(
+  (response) => {
+    let data = response.data;
+
+    // 1. Safely handle empty, null, or undefined responses
+    if (data === null || data === undefined || data === '') {
+      response.data = [];
+      return response;
+    }
+
+    return response;
+  },
+  (error) => {
+    // If an error is caught but the frontend component expects an array, returning a rejected promise
+    // might still crash if not caught locally. However, standard Axios behavior is to reject.
+    return Promise.reject(error);
+  }
+);
+
 export default api;
