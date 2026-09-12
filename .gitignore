@@ -21,3 +21,4 @@ backend/firebase-service-account.json
 .env
 .env.*
 !.env.example
+nexa-health-project.zip
