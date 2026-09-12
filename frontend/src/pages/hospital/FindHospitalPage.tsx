@@ -176,7 +176,7 @@ export const FindHospitalPage: React.FC = () => {
         hDepts.some((d) => (d || '').toLowerCase().includes(sQuery));
 
       // Handle mismatch like "Coimbatore" vs "Coimbatore District"
-      const matchesDistrict = sDistrict === 'all' || hDistrict === sDistrict || hDistrict.includes(sDistrict) || sDistrict.includes(hDistrict);
+      const matchesDistrict = sDistrict === 'all' || (hDistrict.length > 0 && (hDistrict === sDistrict || hDistrict.includes(sDistrict) || sDistrict.includes(hDistrict)));
       
       const matchesType = sType === 'all' || hType === sType;
       const matchesDept = sDept === 'all' || hDepts.some((d) => (d || '').toLowerCase().includes(sDept));
@@ -537,7 +537,9 @@ export const FindHospitalPage: React.FC = () => {
 
               {/* Interactive Map Visualizer */}
               <InteractiveMap
+                hospitalsList={filteredHospitals}
                 hospital={selectedHospital}
+                onSelectHospital={(h) => setSelectedHospital(h)}
                 heightClass="h-80"
               />
 
