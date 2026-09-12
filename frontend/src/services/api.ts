@@ -1,7 +1,16 @@
 import axios from 'axios';
 
+const getBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  // If it's empty, or a relative path (starts with /), force the absolute production URL
+  if (!envUrl || envUrl.trim() === '' || envUrl.startsWith('/')) {
+    return 'https://nexa-health-ai-1-ls8m.onrender.com/api';
+  }
+  return envUrl;
+};
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://nexa-health-ai-1-ls8m.onrender.com/api',
+  baseURL: getBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },
