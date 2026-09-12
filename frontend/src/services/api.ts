@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://nexa-health-ai-1-ls8m.onrender.com/api',
   headers: {
     'Content-Type': 'application/json',
   },

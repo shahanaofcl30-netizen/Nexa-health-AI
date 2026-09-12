@@ -63,7 +63,7 @@ export class WebRTCService {
 
     // 1. Initialize Socket.IO connection
     // Extract base URL from VITE_API_BASE_URL (removing /api if present)
-    let backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    let backendUrl = import.meta.env.VITE_API_BASE_URL || 'https://nexa-health-ai-1-ls8m.onrender.com/api';
     if (backendUrl.endsWith('/api')) {
       backendUrl = backendUrl.slice(0, -4);
     }
