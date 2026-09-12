@@ -303,7 +303,13 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
   const firestoreData = Object.fromEntries(
     Object.entries(newAppointment).filter(([_, v]) => v !== undefined)
   );
-  await firebaseAdminDb.collection('appointments').doc(newAppointment.id).set(firestoreData);
+  try {
+    if (firebaseAdminDb) {
+      await firebaseAdminDb.collection('appointments').doc(newAppointment.id).set(firestoreData);
+    }
+  } catch (e) {
+    console.error('Failed to save appointment to Firebase:', e);
+  }
   store.appointments.unshift(newAppointment);
 
   // Populate response
@@ -356,7 +362,13 @@ router.put('/:id/status', async (req: AuthenticatedRequest, res: Response) => {
   }
 
   apt.updatedAt = new Date().toISOString();
-  await firebaseAdminDb.collection('appointments').doc(apt.id).update({ status: apt.status, dateTime: apt.dateTime, updatedAt: apt.updatedAt });
+  try {
+    if (firebaseAdminDb) {
+      await firebaseAdminDb.collection('appointments').doc(apt.id).update({ status: apt.status, dateTime: apt.dateTime, updatedAt: apt.updatedAt });
+    }
+  } catch (e) {
+    console.error('Failed to update appointment in Firebase:', e);
+  }
 
   // If completed, autonomous trigger: BillingAgent creates draft invoice if none exists
   if (status === 'completed') {
@@ -393,7 +405,13 @@ router.put('/:id/status', async (req: AuthenticatedRequest, res: Response) => {
         createdAt: new Date().toISOString(),
         patient,
       };
-      await firebaseAdminDb.collection('invoices').doc(newInv.id).set(newInv);
+      try {
+        if (firebaseAdminDb) {
+          await firebaseAdminDb.collection('invoices').doc(newInv.id).set(newInv);
+        }
+      } catch (e) {
+        console.error('Failed to save invoice to Firebase:', e);
+      }
       store.invoices.unshift(newInv);
     }
   }
