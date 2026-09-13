@@ -42,11 +42,14 @@ api.interceptors.response.use(
       return response;
     }
 
+    // 2. Safely handle HTML fallback responses from proxies (like Vercel SPA routing)
+    if (typeof data === 'string' && data.trim().toLowerCase().startsWith('<!doctype html>')) {
+      return Promise.reject(new Error('API Route not found: Received HTML fallback instead of JSON API response'));
+    }
+
     return response;
   },
   (error) => {
-    // If an error is caught but the frontend component expects an array, returning a rejected promise
-    // might still crash if not caught locally. However, standard Axios behavior is to reject.
     return Promise.reject(error);
   }
 );
