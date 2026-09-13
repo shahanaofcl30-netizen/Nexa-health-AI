@@ -1,11 +1,21 @@
 import axios from 'axios';
 
 const getBaseUrl = () => {
-  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  let envUrl = import.meta.env.VITE_API_BASE_URL;
+  
   // If it's empty, or a relative path (starts with /), force the absolute production URL
   if (!envUrl || envUrl.trim() === '' || envUrl.startsWith('/')) {
     return 'https://nexa-health-ai-1-ls8m.onrender.com/api';
   }
+  
+  // Clean up any trailing slash
+  envUrl = envUrl.replace(/\/$/, '');
+  
+  // Guarantee it ends with /api
+  if (!envUrl.endsWith('/api')) {
+    envUrl += '/api';
+  }
+  
   return envUrl;
 };
 
