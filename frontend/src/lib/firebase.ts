@@ -2,9 +2,12 @@ import { initializeApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
+const rawAuthDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'nexa-health-ai.firebaseapp.com';
+const authDomain = rawAuthDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyAEc9qSWafF2j_HptM5waV_CXya1Kmfdpg',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'nexa-health-ai.firebaseapp.com',
+  authDomain: authDomain,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'nexa-health-ai',
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'nexa-health-ai.firebasestorage.app',
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '833503484366',
