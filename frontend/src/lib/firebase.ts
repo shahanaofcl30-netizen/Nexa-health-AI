@@ -2,8 +2,8 @@ import { initializeApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-const rawAuthDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'nexa-health-ai.firebaseapp.com';
-const authDomain = rawAuthDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+let authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'nexa-health-ai.firebaseapp.com';
+authDomain = authDomain.trim().replace(/^(https?:\/\/)+/g, '').replace(/\/+$/g, '');
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyAEc9qSWafF2j_HptM5waV_CXya1Kmfdpg',
